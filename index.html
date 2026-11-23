@@ -1,0 +1,2615 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>我的香氛誌 | 密碼保護與雲端雙向同步</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 載入 Google Fonts: Noto Serif TC 與 Inter / Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+  <!-- 載入 Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: '#F8F7F4',
+            paper: '#FFFFFF',
+            sand: '#EFECE6',
+            charcoal: '#2C2A29',
+            muted: '#6E6A66',
+            sage: '#4A5D4E',
+            sageLight: '#8FA393',
+            sagePale: '#EBF0EC',
+            wood: '#8C6D53',
+            woodPale: '#F4EFEA'
+          },
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans TC"', 'sans-serif'],
+            serif: ['"Noto Serif TC"', 'serif']
+          },
+          boxShadow: {
+            'soft': '0 4px 20px -2px rgba(44, 42, 41, 0.05)',
+            'sheet': '0 -10px 40px rgba(44, 42, 41, 0.14)'
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #EAE7E1;
+      color: #2C2A29;
+      overscroll-behavior-y: none;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .sheet-backdrop {
+      transition: opacity 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .sheet-panel {
+      transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .dragging-card {
+      opacity: 0.94;
+      transform: scale(1.02);
+      box-shadow: 0 14px 30px rgba(74, 93, 78, 0.22);
+      border-color: #4A5D4E !important;
+      background-color: #FDFCFA;
+      z-index: 40;
+    }
+    .drag-placeholder {
+      border: 2px dashed #8FA393;
+      background-color: rgba(143, 163, 147, 0.1);
+      border-radius: 1rem;
+    }
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-slow {
+      animation: spin-slow 1.2s linear infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center bg-[#EAE7E1]">
+
+  <!-- 手機單手操作主容器 -->
+  <div id="app-container" class="w-full max-w-md min-h-screen bg-cream flex flex-col relative shadow-2xl overflow-x-hidden">
+
+    <!-- 1. 頂部固定導覽列 (Sticky Header) -->
+    <header class="sticky top-0 z-30 bg-cream/95 backdrop-blur-md border-b border-sand px-4 pt-3.5 pb-3">
+      <!-- 第一列：標題與功能按鈕 -->
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-9 h-9 rounded-xl bg-sage text-white flex items-center justify-center shadow-sm shrink-0">
+            <i class="ph ph-flask text-lg"></i>
+          </div>
+          <div class="min-w-0">
+            <h1 class="font-serif text-lg font-bold tracking-wide text-charcoal leading-tight truncate">我的香氛誌</h1>
+            <p class="text-[10px] text-muted tracking-wider uppercase">Cloud Scent Archive</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 shrink-0">
+          <!-- 排序/管理切換按鈕 -->
+          <button id="toggle-sort-btn" onclick="toggleSortMode()"
+            class="px-2.5 py-2 rounded-xl text-xs font-medium flex items-center gap-1 transition-all border border-sand bg-paper text-charcoal active:scale-95"
+            title="切換順序調整與快速刪除模式">
+            <i class="ph ph-arrows-down-up text-sm text-sage"></i>
+            <span id="sort-btn-text">排序/管理</span>
+          </button>
+
+          <!-- 雲端設定按鈕 -->
+          <button onclick="openCloudModal()"
+            class="p-2 rounded-xl text-charcoal bg-paper border border-sand active:scale-95 transition-all relative"
+            title="Google 試算表雲端同步與密碼設定">
+            <i class="ph ph-cloud-arrow-up text-lg text-sage"></i>
+            <span id="cloud-dot" class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400"></span>
+          </button>
+
+          <!-- 立即鎖定按鈕 -->
+          <button id="lock-now-btn" onclick="lockAppScreen()"
+            class="p-2 rounded-xl text-charcoal bg-paper border border-sand active:scale-95 transition-all"
+            title="立即鎖定畫面">
+            <i id="lock-now-icon" class="ph ph-lock-simple text-lg text-muted"></i>
+          </button>
+
+          <!-- 新增香氛 (+) 按鈕 -->
+          <button onclick="openAddModal()"
+            class="px-3 py-2 rounded-xl bg-sage text-white text-xs font-semibold flex items-center gap-1 shadow-sm hover:bg-[#3E4F42] active:scale-95 transition-all">
+            <i class="ph-bold ph-plus text-sm"></i>
+            <span>新增</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 雲端同步狀態膠囊列 -->
+      <div class="flex items-center justify-between gap-2 mb-2.5 px-2.5 py-1.5 rounded-xl bg-paper/90 border border-sand/90">
+        <button onclick="openCloudModal()" class="flex items-center gap-1.5 min-w-0 text-left flex-1">
+          <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+          <span id="sync-status-text" class="text-[11px] font-medium text-muted truncate">本機模式（點擊設定試算表同步）</span>
+        </button>
+        <button id="manual-refresh-btn" onclick="syncFromCloud(true)"
+          class="px-2 py-0.5 rounded-lg bg-sagePale text-sage text-[11px] font-semibold flex items-center gap-1 hover:bg-sage hover:text-white active:scale-95 transition-all shrink-0"
+          title="從 Google 試算表重新讀取最新清單">
+          <i id="refresh-icon" class="ph-bold ph-arrows-clockwise text-xs"></i>
+          <span>同步</span>
+        </button>
+      </div>
+
+      <!-- 搜尋框 -->
+      <div class="relative mb-2.5">
+        <i class="ph ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-base"></i>
+        <input id="search-input" type="text" placeholder="搜尋品牌、品名、香調、價格或筆記..."
+          oninput="handleSearch(this.value)"
+          class="w-full bg-paper border border-sand rounded-xl pl-9 pr-9 py-2 text-sm text-charcoal placeholder:text-muted/60 focus:outline-none focus:border-sage transition-colors" />
+        <button id="clear-search-btn" onclick="clearSearch()"
+          class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-charcoal p-1">
+          <i class="ph-fill ph-x-circle text-base"></i>
+        </button>
+      </div>
+
+      <!-- 三個主清單分頁切換 -->
+      <div class="grid grid-cols-3 gap-1.5 bg-sand/85 p-1 rounded-2xl">
+        <button onclick="switchTab('owned')" id="tab-owned"
+          class="tab-btn py-2 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 bg-paper text-charcoal shadow-sm">
+          <span>已持有</span>
+          <span id="count-owned" class="px-1.5 py-0.5 text-[10px] rounded-full bg-sage text-white font-semibold">20</span>
+        </button>
+        <button onclick="switchTab('try')" id="tab-try"
+          class="tab-btn py-2 px-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 text-muted hover:text-charcoal">
+          <span>待試香</span>
+          <span id="count-try" class="px-1.5 py-0.5 text-[10px] rounded-full bg-sand text-muted font-semibold">2</span>
+        </button>
+        <button onclick="switchTab('buy')" id="tab-buy"
+          class="tab-btn py-2 px-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 text-muted hover:text-charcoal">
+          <span>待購買</span>
+          <span id="count-buy" class="px-1.5 py-0.5 text-[10px] rounded-full bg-sand text-muted font-semibold">15</span>
+        </button>
+      </div>
+
+      <!-- 「已持有」子分類篩選膠囊列 -->
+      <div id="subfilter-bar" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2.5 pb-0.5">
+        <button onclick="setSubFilter('全部')" data-sub="全部"
+          class="sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-charcoal text-white transition-all">
+          全部 (20)
+        </button>
+        <button onclick="setSubFilter('個人香水')" data-sub="個人香水"
+          class="sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-paper border border-sand text-muted hover:text-charcoal transition-all">
+          個人香水 (10)
+        </button>
+        <button onclick="setSubFilter('空間噴霧')" data-sub="空間噴霧"
+          class="sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-paper border border-sand text-muted hover:text-charcoal transition-all">
+          空間噴霧 (7)
+        </button>
+        <button onclick="setSubFilter('試管禮盒')" data-sub="試管禮盒"
+          class="sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-paper border border-sand text-muted hover:text-charcoal transition-all">
+          試管禮盒 (3)
+        </button>
+      </div>
+
+      <!-- 排序/管理模式提示條 -->
+      <div id="sort-banner" class="hidden mt-2.5 px-3 py-2 rounded-xl bg-sagePale border border-sageLight/40 flex items-center justify-between text-xs text-sage">
+        <div class="flex items-center gap-1.5">
+          <i class="ph-fill ph-hand-grabbing text-sm"></i>
+          <span>點擊 <b>▲ / ▼</b> 調整順序或按垃圾桶刪除</span>
+        </div>
+        <button onclick="toggleSortMode()" class="font-bold underline ml-2 shrink-0">完成</button>
+      </div>
+    </header>
+
+    <!-- 2. 主清單滾動區域 -->
+    <main id="list-container" class="flex-1 px-4 pt-3 pb-24 space-y-2.5">
+      <!-- 動態渲染香水卡片 -->
+    </main>
+
+    <!-- 3. 底部細項檢視與編輯抽屜 (Detail & Edit Bottom Sheet) -->
+    <div id="detail-modal" class="fixed inset-0 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+      <div id="detail-backdrop" onclick="closeDetailModal()" class="sheet-backdrop fixed inset-0 bg-charcoal/45 backdrop-blur-[2px] opacity-0"></div>
+
+      <div id="detail-panel" class="sheet-panel relative w-full bg-paper rounded-t-3xl shadow-sheet max-h-[90vh] flex flex-col translate-y-full z-10">
+        <!-- 頂部拖曳指示條 -->
+        <div class="w-full pt-3 pb-2 flex justify-center shrink-0" onclick="closeDetailModal()">
+          <div class="w-10 h-1.5 rounded-full bg-sand"></div>
+        </div>
+
+        <!-- 抽屜標題列 -->
+        <div class="px-5 pb-3 border-b border-sand flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-2">
+            <span id="detail-list-badge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sagePale text-sage">已持有</span>
+            <span id="detail-sub-badge" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-woodPale text-wood">個人香水</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button id="toggle-edit-btn" onclick="toggleEditMode()"
+              class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-sand/80 text-charcoal hover:bg-sand active:scale-95 transition-all flex items-center gap-1">
+              <i class="ph ph-pencil-simple text-sm"></i>
+              <span id="edit-btn-label">編輯</span>
+            </button>
+            <button onclick="closeDetailModal()" class="p-1.5 rounded-xl text-muted hover:text-charcoal">
+              <i class="ph ph-x text-xl"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 抽屜可捲動內容 -->
+        <div id="detail-content" class="p-5 overflow-y-auto space-y-4 flex-1">
+          <!-- 動態產生檢視模式或編輯表單 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 新增香氛抽屜 (Add Fragrance Bottom Sheet) -->
+    <div id="add-modal" class="fixed inset-0 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+      <div id="add-backdrop" onclick="closeAddModal()" class="sheet-backdrop fixed inset-0 bg-charcoal/45 backdrop-blur-[2px] opacity-0"></div>
+      <div id="add-panel" class="sheet-panel relative w-full bg-paper rounded-t-3xl shadow-sheet max-h-[90vh] flex flex-col translate-y-full z-10">
+        <div class="w-full pt-3 pb-2 flex justify-center shrink-0" onclick="closeAddModal()">
+          <div class="w-10 h-1.5 rounded-full bg-sand"></div>
+        </div>
+        <div class="px-5 pb-3 border-b border-sand flex items-center justify-between shrink-0">
+          <h2 class="font-serif text-lg font-bold text-charcoal">新增香氛紀錄</h2>
+          <button onclick="closeAddModal()" class="p-1.5 rounded-xl text-muted hover:text-charcoal">
+            <i class="ph ph-x text-xl"></i>
+          </button>
+        </div>
+        <form id="add-form" onsubmit="handleAddSubmit(event)" class="p-5 overflow-y-auto space-y-3.5 flex-1">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-muted mb-1">目標清單 *</label>
+              <select id="add-list" onchange="toggleAddSubCategory()"
+                class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage">
+                <option value="owned">已持有</option>
+                <option value="try" selected>待試香</option>
+                <option value="buy">待購買</option>
+              </select>
+            </div>
+            <div id="add-sub-wrapper" class="hidden">
+              <label class="block text-xs font-medium text-muted mb-1">子分類</label>
+              <select id="add-sub"
+                class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage">
+                <option value="個人香水">個人香水</option>
+                <option value="空間噴霧">空間噴霧</option>
+                <option value="試管禮盒">試管禮盒</option>
+              </select>
+            </div>
+            <div id="add-volume-wrapper">
+              <label class="block text-xs font-medium text-muted mb-1">容量規格</label>
+              <input type="text" id="add-volume" placeholder="例如：50ml / 100ml"
+                class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
+            </div>
+          </div>
+
+          <div id="add-volume-row-owned" class="hidden">
+            <label class="block text-xs font-medium text-muted mb-1">容量規格</label>
+            <input type="text" id="add-volume-owned" placeholder="例如：50ml / 100ml"
+              class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">品牌名稱 *</label>
+            <input type="text" id="add-brand" required placeholder="例如：NOSEWAY / Aesop / Le Labo"
+              class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">香水品名 *</label>
+            <input type="text" id="add-name" required placeholder="例如：Formosa 小小多山的國家"
+              class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">官方商品照片網址 (Image URL)</label>
+            <input type="url" id="add-image" placeholder="https://... (選填，留白則顯示品牌專屬香水瓶插圖)"
+              class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">香調與主要香材</label>
+            <input type="text" id="add-notes" placeholder="例如：冷杉葉、四季春茶、肖楠木、檜木"
+              class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">參考價格 / 單價</label>
+            <input type="text" id="add-price" placeholder="例如：NT$ 3,680（約 36.8 元/ml）"
+              class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">個人筆記 / 試香與購買管道</label>
+            <textarea id="add-memo" rows="3" placeholder="記錄試聞感受、專櫃管道、疊香建議或購買考量..."
+              class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage"></textarea>
+          </div>
+
+          <div class="pt-2 pb-4">
+            <button type="submit"
+              class="w-full py-3.5 rounded-2xl bg-sage text-white font-semibold text-sm shadow-md hover:bg-[#3E4F42] active:scale-[0.99] transition-all">
+              儲存並同步至雲端
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 5. 刪除二次確認彈窗 (Delete Confirmation Modal) -->
+    <div id="delete-confirm-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-5 max-w-md mx-auto">
+      <div onclick="closeDeleteConfirmModal()" class="fixed inset-0 bg-charcoal/55 backdrop-blur-[2px] transition-opacity"></div>
+      <div class="relative w-full max-w-sm bg-paper rounded-3xl p-6 shadow-2xl z-10 text-center space-y-4">
+        <div class="w-12 h-12 rounded-2xl bg-red-50 text-red-600 mx-auto flex items-center justify-center">
+          <i class="ph-fill ph-warning-circle text-2xl"></i>
+        </div>
+        <div class="space-y-1.5">
+          <h3 class="font-serif text-lg font-bold text-charcoal">確定要刪除此香氛嗎？</h3>
+          <p id="delete-target-name" class="text-sm font-semibold text-sage px-2"></p>
+          <p class="text-xs text-muted leading-relaxed">確認後將從清單及同步的 Google 試算表中移除，此操作無法復原。</p>
+        </div>
+        <div class="flex gap-2.5 pt-2">
+          <button onclick="closeDeleteConfirmModal()"
+            class="flex-1 py-3 rounded-2xl bg-sand text-charcoal text-xs font-semibold hover:bg-sand/80 active:scale-95 transition-all">
+            取消保留
+          </button>
+          <button onclick="executeConfirmedDelete()"
+            class="flex-1 py-3 rounded-2xl bg-red-600 text-white text-xs font-semibold shadow-sm hover:bg-red-700 active:scale-95 transition-all">
+            確認刪除
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Google 試算表雲端同步設定彈窗 (Cloud Sync Settings Modal) -->
+    <div id="cloud-modal" class="fixed inset-0 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+      <div onclick="closeCloudModal()" class="fixed inset-0 bg-charcoal/50 backdrop-blur-[2px]"></div>
+      <div class="relative w-full bg-paper rounded-t-3xl shadow-sheet max-h-[92vh] flex flex-col z-10">
+        <div class="w-full pt-3 pb-2 flex justify-center shrink-0" onclick="closeCloudModal()">
+          <div class="w-10 h-1.5 rounded-full bg-sand"></div>
+        </div>
+        <div class="px-5 pb-3 border-b border-sand flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-2">
+            <i class="ph-fill ph-shield-check text-sage text-lg"></i>
+            <h2 class="font-serif text-lg font-bold text-charcoal">雲端同步與密碼保護設定</h2>
+          </div>
+          <button onclick="closeCloudModal()" class="p-1.5 rounded-xl text-muted hover:text-charcoal">
+            <i class="ph ph-x text-xl"></i>
+          </button>
+        </div>
+
+        <div class="p-5 overflow-y-auto space-y-4 flex-1">
+          <!-- Web App URL 與專屬同步密碼設定區 -->
+          <div class="bg-cream rounded-2xl p-4 border border-sand space-y-3">
+            <div>
+              <label class="text-xs font-bold text-charcoal flex items-center gap-1.5 mb-1.5">
+                <i class="ph-fill ph-link text-sage"></i>
+                <span>Apps Script 網路應用程式網址 (Web App URL)</span>
+              </label>
+              <input type="url" id="cloud-url-input" placeholder="https://script.google.com/macros/s/...../exec"
+                class="w-full bg-paper border border-sand rounded-xl px-3 py-2.5 text-xs text-charcoal focus:outline-none focus:border-sage" />
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-xs font-bold text-charcoal flex items-center gap-1.5">
+                  <i class="ph-fill ph-key text-wood"></i>
+                  <span>專屬同步密碼 / Access Token</span>
+                </label>
+                <span id="pin-status-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-sand text-muted font-medium">未設定密碼鎖</span>
+              </div>
+              <div class="relative">
+                <input type="password" id="cloud-token-input" placeholder="設定通行密碼（需與 Apps Script 的 SECRET_TOKEN 一致）"
+                  class="w-full bg-paper border border-sand rounded-xl pl-3 pr-10 py-2.5 text-xs text-charcoal focus:outline-none focus:border-sage" />
+                <button type="button" onclick="togglePasswordVisibility('cloud-token-input', 'toggle-token-eye')"
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-charcoal p-1"
+                  title="顯示或隱藏密碼">
+                  <i id="toggle-token-eye" class="ph ph-eye text-base"></i>
+                </button>
+              </div>
+              <p class="text-[11px] text-muted mt-1.5 leading-relaxed">
+                填寫後開啟網頁將啟用「解鎖畫面」；若未填寫密碼，則維持免密碼本機/雲端使用。
+              </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick="saveCloudUrlAndPull()"
+                class="py-2.5 px-3 rounded-xl bg-sage text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                <i class="ph-bold ph-cloud-arrow-down text-sm"></i>
+                <span>儲存並從雲端讀取</span>
+              </button>
+              <button onclick="pushAllToCloud(true)"
+                class="py-2.5 px-3 rounded-xl bg-wood text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                <i class="ph-bold ph-cloud-arrow-up text-sm"></i>
+                <span>將本機清單覆蓋寫入雲端</span>
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between pt-1.5 border-t border-sand/80">
+              <button type="button" onclick="lockAppScreenFromModal()"
+                class="text-xs font-semibold text-sage flex items-center gap-1 hover:underline">
+                <i class="ph-bold ph-lock-simple"></i>
+                <span>立即鎖定畫面</span>
+              </button>
+              <button type="button" onclick="clearSavedPinAndUnlock()"
+                class="text-xs font-medium text-red-600 hover:underline">
+                清除密碼並解除鎖定
+              </button>
+            </div>
+          </div>
+
+          <!-- Apps Script 程式碼一鍵複製區 -->
+          <div class="bg-cream rounded-2xl p-4 border border-sand space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-charcoal">Apps Script 同步橋樑程式碼</span>
+              <button onclick="copyGasCode()"
+                class="px-2.5 py-1 rounded-lg bg-sagePale text-sage text-xs font-semibold flex items-center gap-1 hover:bg-sage hover:text-white active:scale-95 transition-all">
+                <i class="ph-bold ph-copy text-xs"></i>
+                <span>一鍵複製程式碼</span>
+              </button>
+            </div>
+            <p class="text-[11px] text-muted leading-relaxed">
+              在 Google 試算表點選 <b>擴充功能 &gt; Apps Script</b>，貼上以下程式碼並部署為「網路應用程式（誰可以存取：所有人）」：
+            </p>
+            <textarea id="gas-code-box" readonly rows="6"
+              class="w-full bg-charcoal text-cream/90 font-mono text-[10px] rounded-xl p-3 focus:outline-none leading-relaxed"></textarea>
+          </div>
+
+          <!-- 還原預設資料區 -->
+          <div class="bg-woodPale/70 rounded-2xl p-4 border border-wood/20 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-charcoal">本機資料重設</span>
+              <button id="reset-trigger-btn" onclick="showResetConfirm()"
+                class="px-3 py-1.5 rounded-xl bg-white border border-wood/30 text-wood text-xs font-semibold hover:bg-wood hover:text-white transition-colors">
+                重設為預設 37 項清單
+              </button>
+            </div>
+            <div id="reset-final-actions" class="hidden flex gap-2 pt-1">
+              <button onclick="cancelResetConfirm()" class="flex-1 py-2 rounded-xl bg-sand text-charcoal text-xs font-medium">取消</button>
+              <button onclick="executeResetData()" class="flex-1 py-2 rounded-xl bg-red-600 text-white text-xs font-semibold">確定還原預設值</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. 輕量提示氣泡 (Toast Notification) -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] pointer-events-none opacity-0 transition-all duration-300 translate-y-3">
+      <div class="bg-charcoal/95 text-white px-4 py-2.5 rounded-full shadow-lg text-xs font-medium flex items-center gap-2 whitespace-nowrap">
+        <i class="ph-fill ph-check-circle text-sageLight text-base"></i>
+        <span id="toast-message">已更新</span>
+      </div>
+    </div>
+
+    <!-- 8. 密碼解鎖畫面 (Access Token / PIN Lock Screen) -->
+    <div id="lock-screen" class="fixed inset-0 z-[90] hidden flex flex-col justify-center items-center p-6 bg-cream max-w-md mx-auto">
+      <div class="w-full max-w-sm bg-paper border border-sand rounded-3xl p-6 shadow-2xl space-y-5">
+        <div class="text-center space-y-2">
+          <div class="w-14 h-14 rounded-2xl bg-sagePale text-sage mx-auto flex items-center justify-center shadow-sm">
+            <i class="ph-fill ph-lock-key text-3xl"></i>
+          </div>
+          <h2 class="font-serif text-xl font-bold text-charcoal">香氛誌已上鎖</h2>
+          <p id="lock-screen-hint" class="text-xs text-muted leading-relaxed">
+            請輸入您的專屬通行密碼以解鎖清單與同步 Google 試算表。
+          </p>
+        </div>
+
+        <form id="unlock-form" onsubmit="handleUnlockSubmit(event)" class="space-y-3.5">
+          <div>
+            <label for="unlock-pin-input" class="block text-xs font-semibold text-charcoal mb-1.5">通行密碼</label>
+            <div class="relative">
+              <input id="unlock-pin-input" type="password" autocomplete="current-password" required
+                placeholder="請輸入通行密碼..."
+                class="w-full bg-cream border border-sand rounded-2xl pl-3.5 pr-10 py-3 text-sm text-charcoal focus:outline-none focus:border-sage transition-colors" />
+              <button type="button" onclick="togglePasswordVisibility('unlock-pin-input', 'unlock-eye-icon')"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-charcoal p-1"
+                title="顯示或隱藏密碼">
+                <i id="unlock-eye-icon" class="ph ph-eye text-lg"></i>
+              </button>
+            </div>
+            <p id="unlock-error-msg" class="hidden text-xs text-red-600 font-medium mt-1.5">
+              密碼不正確，請重新輸入。
+            </p>
+          </div>
+
+          <button type="submit"
+            class="w-full py-3.5 rounded-2xl bg-sage text-white text-sm font-semibold shadow-md hover:bg-[#3E4F42] active:scale-[0.99] transition-all flex items-center justify-center gap-1.5">
+            <i class="ph-bold ph-lock-open text-base"></i>
+            <span>解鎖並進入香氛誌</span>
+          </button>
+        </form>
+
+        <!-- 重設密碼／登出鎖定區域 -->
+        <div class="pt-3 border-t border-sand space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-muted">忘記密碼或需重新設定？</span>
+            <button type="button" id="reset-pin-trigger" onclick="showResetPinConfirm()"
+              class="font-semibold text-wood hover:underline">
+              重設密碼／登出鎖定
+            </button>
+          </div>
+          <div id="reset-pin-confirm-box" class="hidden bg-woodPale/70 border border-wood/20 rounded-2xl p-3 space-y-2">
+            <p class="text-[11px] text-charcoal leading-relaxed">
+              重設將會清除本機儲存的通行密碼並解除畫面鎖定（您的本機與試算表香氛資料不會被刪除）。
+            </p>
+            <div class="flex gap-2">
+              <button type="button" onclick="hideResetPinConfirm()"
+                class="flex-1 py-2 rounded-xl bg-sand text-charcoal text-xs font-medium">
+                取消
+              </button>
+              <button type="button" onclick="resetPinAndUnlock()"
+                class="flex-1 py-2 rounded-xl bg-red-600 text-white text-xs font-semibold">
+                確認重設並解鎖
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /**
+     * Google Apps Script 後端橋樑程式碼 (支援 token 驗證、GET 讀取與 POST 全量同步 sync_all)
+     */
+    const GAS_TEMPLATE_CODE = `// 貼上至 Google 試算表 > 擴充功能 > Apps Script
+const SHEET_NAME = 'Fragrances';
+const HEADERS = ['id', 'list', 'sub_category', 'brand', 'name', 'volume', 'notes', 'price', 'memo', 'image_url', 'order_num'];
+
+// 請將下方密碼改為您自己的專屬通行密碼（需與網頁「專屬同步密碼」一致；若留空 '' 則不強制驗證密碼）
+const SECRET_TOKEN = 'CHANGE_ME_YOUR_SECRET_TOKEN';
+
+function isAuthorized(tokenFromRequest) {
+  if (!SECRET_TOKEN) return true;
+  return String(tokenFromRequest || '').trim() === SECRET_TOKEN;
+}
+
+function jsonResponse(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getOrCreateSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.appendRow(HEADERS);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+// 讀取所有香氛資料 (GET?token=...)
+function doGet(e) {
+  const token = (e && e.parameter && e.parameter.token) ? e.parameter.token : '';
+  if (!isAuthorized(token)) {
+    return jsonResponse({ ok: false, status: 'error', error: 'Unauthorized' });
+  }
+
+  const sheet = getOrCreateSheet();
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return jsonResponse({ ok: true, status: 'ok', items: [] });
+  }
+  const headers = data[0];
+  const items = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[0] && !row[4]) continue;
+    const obj = {};
+    headers.forEach((h, idx) => {
+      obj[h] = row[idx] !== undefined ? String(row[idx]) : '';
+    });
+    obj.order_num = Number(obj.order_num) || i;
+    items.push(obj);
+  }
+  items.sort((a, b) => a.order_num - b.order_num);
+  return jsonResponse({ ok: true, status: 'ok', items: items });
+}
+
+// 寫入與同步資料 (POST { token, action: 'sync_all', items })
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const payload = JSON.parse((e && e.postData && e.postData.contents) ? e.postData.contents : '{}');
+    if (!isAuthorized(payload.token)) {
+      return jsonResponse({ ok: false, status: 'error', error: 'Unauthorized' });
+    }
+
+    const sheet = getOrCreateSheet();
+
+    if (payload.action === 'sync_all' && Array.isArray(payload.items)) {
+      sheet.clearContents();
+      sheet.appendRow(HEADERS);
+      const rows = payload.items.map((item, idx) => [
+        item.id || ('item-' + Date.now() + '-' + idx),
+        item.list || 'owned',
+        item.sub_category || item.subCategory || '個人香水',
+        item.brand || '',
+        item.name || '',
+        item.volume || '',
+        item.notes || '',
+        item.price || '',
+        item.memo || '',
+        item.image_url || item.imageUrl || '',
+        idx + 1
+      ]);
+      if (rows.length > 0) {
+        sheet.getRange(2, 1, rows.length, HEADERS.length).setValues(rows);
+      }
+      return jsonResponse({ ok: true, status: 'ok', count: rows.length });
+    }
+
+    return jsonResponse({ ok: false, status: 'error', error: 'Unknown action' });
+  } catch (err) {
+    return jsonResponse({ ok: false, status: 'error', error: err.toString() });
+  } finally {
+    lock.releaseLock();
+  }
+}`;
+
+    /**
+     * 預設內建完整 37 項香氛資料 (20 已持有 + 2 待試香 + 15 待購買)
+     */
+    const DEFAULT_FRAGRANCES = [
+      // ================= 一、已持有 (owned - 20項) =================
+      {
+        id: 'owned-1',
+        list: 'owned',
+        sub_category: '個人香水',
+        brand: 'folks',
+        name: '南投春水淡香水 (Nantou Spring Dew EDT)',
+        volume: '',
+        bottleColor: '#7A9A7E',
+        image_url: 'https://www.folks.tw/cdn/shop/files/NantouSpringDew_1.jpg?v=1700000000',
+        notes: '佛手柑、新鮮薄荷、綠茶、烏龍茶、岩蘭草、冷杉',
+        price: '',
+        memo: '南投高山冷泡茶靈感，清透茶韻接續山林木質尾調。（小撇步：中後調含羊絨木與麝香，噴在衣物或搭配 SHIRO BON WOOD 疊香可避免體溫烘出暈香感）',
+        order_num: 1
+      },
+      {
+        id: 'owned-2',
+        list: 'owned',
+        sub_category: '個人香水',
+        brand: 'Novigo',
+        name: '紅色森林淡香精 (Red Forest)',
+        volume: '50ml',
+        bottleColor: '#8B3A3A',
+        image_url: 'https://www.novigoparfums.com/cdn/shop/files/RedForest_50ml.jpg',
+        notes: '乳香、鐵觀音、雪松、癒創木、皮革、紅茶、沉香、黑檀木',
+        price: '',
+        memo: '深邃沉穩的東方森林木質調。',
+        order_num: 2
+      },
+      {
+        id: 'owned-3',
+        list: 'owned',
+        sub_category: '個人香水',
+        brand: 'ESSENTIAL PARFUMS',
+        name: '我的香根草 (Mon Vetiver)',
+        volume: '100ml',
+        bottleColor: '#5D7359',
+        image_url: 'https://www.essentialparfums.com/wp-content/uploads/2018/06/Mon-Vetiver-100ml-1.jpg',
+        notes: '萊姆、琴酒、岩蘭草、薰衣草、龍膽',
+        price: '',
+        memo: '清爽萊姆與琴酒氣息，乾淨迷人的木質香根草（調香師：Bruno Jovanovic）。適合與 SHIRO BON WOOD 疊香。',
+        order_num: 3
+      },
+      {
+        id: 'owned-4',
+        list: 'owned',
+        sub_category: '個人香水',
+        brand: 'NOSEWAY',
+        name: '抹抹 (Mua Mua)',
+        volume: '',
+        bottleColor: '#6E8B6B',
+        image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/66028f78223d2800178d7a64/800x.webp',
+        notes: '海荷、南庄橙、蘭嶼酸橙、五月艾、左手香、月桃、沙薑',
+        price: '',
+        memo: '台灣在地草本柑橘茶木香。單噴揮發較快，建議「抹抹 2 ： SHIRO BON WOOD 或樹下無事 1」噴於衣物定香。',
+        order_num: 4
+      },
+      {
+        id: 'owned-5',
+        list: 'owned',
+        sub_category: '個人香水',
+        brand: 'NOSEWAY',
+        name: '樹下無事 (In Green Silence)',
+        volume: '100ml',
+        bottleColor: '#2E5955',
+        image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/64e5b27a1c193a0014d9460e/800x.webp',
+        notes: '杉木、岩蘭草、綠意靜謐草本',
+        price: '',
+        memo: '雨後山林般的純淨綠意與乾燥草木氣息，百搭的森林系日常香。',
+        order_num: 5
+      },
+      {
+        id: 'owned-6',
+        list: 'owned',
+        sub_category: '個人香水',
+        brand: 'Liwu（禮物）',
+        name: '月 Luna',
+        volume: '30ml',
+        bottleColor: '#8E9B97',
+        image_url: '',
+        notes: '清冷木質、月光草原氣息',
+        price: '',
+        memo: '靜謐柔和的月光森林感，適合睡前或與 Ran 857 薰衣草岩蘭草織品噴霧搭配。',
+        order_num: 6
+      },
+      {
+        id: 'owned-7',
+        list: 'owned',
+        sub_category: '個人香水',
+        brand: 'MEOW XIANG（繆香）',
+        name: 'FLOATING INCENSE (WOODY M20)',
+        volume: '',
+        bottleColor: '#4A4643',
+        image_url: '',
+        notes: '焚香、沉穩木質',
+        price: '',
+        memo: '沉生浮香，帶有靜心禪意與煙燻木質質感，適合獨處或冥想。',
+        order_num: 7
+      },
+      {
+        id: 'owned-8',
+        list: 'owned',
+        sub_category: '個人香水',
+        brand: 'MEOW XIANG（繆香）',
+        name: 'FUTURE TRAVEL (WOODY M33)',
+        volume: '',
+        bottleColor: '#6D655F',
+        image_url: '',
+        notes: '乾淨俐落木質調',
+        price: '',
+        memo: '乾淨俐落的木質氣息。',
+        order_num: 8
+      },
+      {
+        id: 'owned-9',
+        list: 'owned',
+        sub_category: '個人香水',
+        brand: 'J-Scent',
+        name: '沈香 Agarwood',
+        volume: '',
+        bottleColor: '#5C4433',
+        image_url: 'https://luz-store.com/cdn/shop/products/J-Scent_Agarwood_50ml.jpg',
+        notes: '沉香、木質、東方香道樹脂',
+        price: '',
+        memo: '溫潤厚實、帶有日式傳統香道氛圍的沉香木質調。',
+        order_num: 9
+      },
+      {
+        id: 'owned-10',
+        list: 'owned',
+        sub_category: '個人香水',
+        brand: 'SHIRO PERFUME',
+        name: 'BON WOOD EAU DE PARFUM',
+        volume: '50ml',
+        bottleColor: '#B59B4C',
+        image_url: 'https://shiro-shiro.jp/cdn/shop/files/12438_01.jpg',
+        notes: '香檸檬、柑橘、辛香、茉莉、廣藿香、雪松、琥珀、香草',
+        price: '',
+        memo: '收藏中的萬用定香神隊友！乾淨俐落的乾燥原木氣息，與我的香根草疊香可還原 Aesop 艾底希思的神韻。',
+        order_num: 10
+      },
+      {
+        id: 'owned-11',
+        list: 'owned',
+        sub_category: '空間噴霧',
+        brand: 'MUJI 無印良品',
+        name: '台灣烏龍茶茶香空間噴霧',
+        volume: '50ml',
+        bottleColor: '#9C8D74',
+        image_url: 'https://www.muji.tw/images/product/4550583938451_400.jpg',
+        notes: '台灣烏龍茶、清新茶韻',
+        price: '',
+        memo: '無糖純粹的高山烏龍茶香，噴在衣物上可中和木質或甜感香水的厚重度。',
+        order_num: 11
+      },
+      {
+        id: 'owned-12',
+        list: 'owned',
+        sub_category: '空間噴霧',
+        brand: 'voyager',
+        name: '山雨雲霧 (Misty Mountains) Essential Oil Room Spray',
+        volume: '10ml',
+        bottleColor: '#697F76',
+        image_url: '',
+        notes: '雨後森林、水潤高山草本精油',
+        price: '',
+        memo: '充滿水潤空氣感與霧氣山林的精油空間噴霧，極適合用來稀釋悶熱後調。',
+        order_num: 12
+      },
+      {
+        id: 'owned-13',
+        list: 'owned',
+        sub_category: '空間噴霧',
+        brand: 'voyager',
+        name: '雪地松針 (Boreal Forest) Essential Oil Room Spray',
+        volume: '10ml',
+        bottleColor: '#3E5E54',
+        image_url: '',
+        notes: '冷冽松針、北國針葉林精油',
+        price: '',
+        memo: '清涼挺拔的北國針葉林氣息，睡前噴灑營造深夜森林氛圍。',
+        order_num: 13
+      },
+      {
+        id: 'owned-14',
+        list: 'owned',
+        sub_category: '空間噴霧',
+        brand: 'Ran',
+        name: '815 ROOM SPRAY PINE & ROSEMARY（松木迷迭香空間噴霧）',
+        volume: '',
+        bottleColor: '#4F6D58',
+        image_url: '',
+        notes: '松木、迷迭香、草本木質',
+        price: '',
+        memo: '提神醒腦的草本松木空間噴霧。',
+        order_num: 14
+      },
+      {
+        id: 'owned-15',
+        list: 'owned',
+        sub_category: '空間噴霧',
+        brand: 'Ran',
+        name: '816 ROOM SPRAY SENCHA（煎茶空間噴霧）',
+        volume: '',
+        bottleColor: '#778A68',
+        image_url: '',
+        notes: '日式煎茶、清爽綠茶',
+        price: '',
+        memo: '帶有微苦回甘單寧感的日式煎茶，可作為疊香降甜利器。',
+        order_num: 15
+      },
+      {
+        id: 'owned-16',
+        list: 'owned',
+        sub_category: '空間噴霧',
+        brand: 'Ran',
+        name: '857 FABRIC SPRAY LAVENDER & VETIVER（薰衣草岩蘭草織品噴霧）',
+        volume: '',
+        bottleColor: '#7B7485',
+        image_url: '',
+        notes: '薰衣草、岩蘭草、舒眠草本',
+        price: '',
+        memo: '噴在枕頭與床單上的絕佳舒眠草本木質噴霧。',
+        order_num: 16
+      },
+      {
+        id: 'owned-17',
+        list: 'owned',
+        sub_category: '空間噴霧',
+        brand: 'Ran',
+        name: 'PM TO GO',
+        volume: '',
+        bottleColor: '#4A5D4E',
+        image_url: '',
+        notes: '隨身空間/織品香氛噴霧',
+        price: '',
+        memo: '方便隨身攜帶轉換空間氛圍的噴霧。',
+        order_num: 17
+      },
+      {
+        id: 'owned-18',
+        list: 'owned',
+        sub_category: '試管禮盒',
+        brand: 'BVLGARI 寶格麗',
+        name: 'Man Rain Essence Eau de Parfum（當代男性雨露淡香精）',
+        volume: '禮盒組',
+        bottleColor: '#7C9399',
+        image_url: 'https://www.bulgari.com/dw/image/v2/BCSG_PRD/on/demandware.static/-/Sites-masterCatalog/default/dw4c8d1b1c/images/large/41821_001.png',
+        notes: '綠茶、白蓮花、麝香、癒創木',
+        price: '',
+        memo: 'MAN COLLECTION DISCOVERY SET 禮盒。乾淨透明的水生綠茶木質調，三款中最清爽實穿。',
+        order_num: 18
+      },
+      {
+        id: 'owned-19',
+        list: 'owned',
+        sub_category: '試管禮盒',
+        brand: 'BVLGARI 寶格麗',
+        name: 'Man In Black Eau de Parfum（當代男性黑茶淡香精）',
+        volume: '禮盒組',
+        bottleColor: '#2B2927',
+        image_url: 'https://www.bulgari.com/dw/image/v2/BCSG_PRD/on/demandware.static/-/Sites-masterCatalog/default/dw7e9f2a3b/images/large/41240_001.png',
+        notes: '蘭姆酒、香料、皮革、晚香玉、癒創木',
+        price: '',
+        memo: 'MAN COLLECTION DISCOVERY SET 禮盒。單穿整體偏甜濃，建議按半下並搭配「MUJI 台灣烏龍茶」或「SHIRO BON WOOD」疊香切斷甜膩感。',
+        order_num: 19
+      },
+      {
+        id: 'owned-20',
+        list: 'owned',
+        sub_category: '試管禮盒',
+        brand: 'BVLGARI 寶格麗',
+        name: 'Man Wood Essence Eau de Parfum（當代男性木益淡香精）',
+        volume: '禮盒組',
+        bottleColor: '#5B6B4D',
+        image_url: 'https://www.bulgari.com/dw/image/v2/BCSG_PRD/on/demandware.static/-/Sites-masterCatalog/default/dw9a1b3c5d/images/large/41485_001.png',
+        notes: '柑橘皮、芫荽、絲柏、香根草、雪松',
+        price: '',
+        memo: 'MAN COLLECTION DISCOVERY SET 禮盒。後調龍涎香容易引起暈香，建議搭配「voyager 山雨雲霧」或「NOSEWAY 樹下無事」拉開呼吸感。',
+        order_num: 20
+      },
+
+      // ================= 二、待試香 (try - 2項) =================
+      {
+        id: 'try-1',
+        list: 'try',
+        sub_category: '個人香水',
+        brand: 'Lalique 萊儷',
+        name: 'Encre Noire 黑澤淡香水',
+        volume: '100ml',
+        bottleColor: '#232323',
+        image_url: 'https://www.lalique.com/sites/default/files/styles/product_zoom/public/2021-05/E10101_0.jpg',
+        notes: '絲柏、波旁與海地雙重岩蘭草、羊絨木、麝香',
+        price: '約 NT$ 1,050～1,399（約 10.5～14 元/ml）',
+        memo: '試香管道：分裝試香賣場（1~2ml 約 NT$ 50~80）或百貨香水複合櫃。岩蘭草控高 CP 值經典！注意香調表含有微量羊絨木與麝香，試香時需留意中後調是否會引發暈香。',
+        order_num: 21
+      },
+      {
+        id: 'try-2',
+        list: 'try',
+        sub_category: '個人香水',
+        brand: 'Issey Miyake 三宅一生',
+        name: "L'Eau d'Issey Pour Homme Wood & Wood（一生之水木頭木頭淡香精）",
+        volume: '100ml',
+        bottleColor: '#8C6239',
+        image_url: 'https://www.isseymiyakeparfums.com/dw/image/v2/BDGH_PRD/on/demandware.static/-/Sites-itemmaster_isseymiyake/default/dw2b3c4d5e/images/large/71012345_01.jpg',
+        notes: '雙倍濃度雪松與檀香、葡萄柚、小荳蔻',
+        price: '電商平輸約 NT$ 1,800～2,480（約 18～24.8 元/ml）',
+        memo: '試香管道：全台百貨 ISSEY MIYAKE 專櫃或大型美妝香水複合店。雙倍雪松與檀香核心，純粹乾燥原木風格，單價在 25 元/ml 以內的高質感日常木質選擇。',
+        order_num: 22
+      },
+
+      // ================= 三、待購買 (buy - 15項) =================
+      {
+        id: 'buy-1',
+        list: 'buy',
+        sub_category: '空間噴霧',
+        brand: 'SALT & STONE',
+        name: '身體髮香噴霧 檜木佛手柑 (Bergamot & Hinoki)',
+        volume: '100ml',
+        bottleColor: '#4A5D4E',
+        image_url: 'https://www.saltandstone.com/cdn/shop/files/BodyMist_BergamotHinoki_100ml.jpg',
+        notes: '義大利佛手柑、葡萄柚、檜木、岩蘭草、尤加利、琥珀',
+        price: '約 NT$ 1,026～1,560（約 10～15.6 元/ml）',
+        memo: '高 CP 值日常無痛首選，大容量適合日常噴灑身體與頭髮，也適合作為木質調定香基底。',
+        order_num: 23
+      },
+      {
+        id: 'buy-2',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'NOSEWAY',
+        name: '春芽入喉時 (Sprouting, Lingering...)',
+        volume: '100ml',
+        bottleColor: '#6E8562',
+        image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/651234567890abcdef111222/800x.webp',
+        notes: '春芽烏龍、天竺葵、金萱茶葉、玉露茶、岩蘭草、檀木、香杉',
+        price: '約 NT$ 3,080～3,680（約 30.8～36.8 元/ml）',
+        memo: '中價位主力考慮。高山茶葉的回甘清香結合檀木與香杉，完美契合茶木香喜好。',
+        order_num: 24
+      },
+      {
+        id: 'buy-3',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'TERRA．T（NOSEWAY）',
+        name: "凝山 (Ici, le pas s'arrête)",
+        volume: '100ml 香精',
+        bottleColor: '#4B5748',
+        image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/652234567890abcdef333444/800x.webp',
+        notes: '醒目薰衣草、快樂鼠尾草、台灣肖楠、雪茄、絲柏、檀香、樺木',
+        price: 'NT$ 4,980（49.8 元/ml）',
+        memo: '中價位主力考慮。高濃度 Extrait 香精，以台灣肖楠與檀香勾勒沉穩守護的山林氣息，建議等百貨檔期或優惠入手。',
+        order_num: 25
+      },
+      {
+        id: 'buy-4',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'TERRA．T（NOSEWAY）',
+        name: '拂山 (La montagne effleure)',
+        volume: '100ml 香精',
+        bottleColor: '#687D70',
+        image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/653234567890abcdef555666/800x.webp',
+        notes: '山林木質、清新草本針葉氣息',
+        price: 'NT$ 4,980（49.8 元/ml）',
+        memo: '中價位主力考慮。與《凝山》並列山林對香，呈現山風輕拂林梢的流動空氣感。',
+        order_num: 26
+      },
+      {
+        id: 'buy-5',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'TERRA．T（NOSEWAY）',
+        name: '臥山',
+        volume: '100ml 香精',
+        bottleColor: '#5B6350',
+        image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/654234567890abcdef777888/800x.webp',
+        notes: '台灣山林木質、沉靜大地苔蘚與草木底蘊',
+        price: 'NT$ 4,980（49.8 元/ml）',
+        memo: '與《凝山》、《拂山》同屬 TERRA．T 山林系列作品，延續台灣原生林木與靜謐山野氣息。',
+        order_num: 27
+      },
+      {
+        id: 'buy-6',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'Miller et Bertaux',
+        name: 'Menta y Menta（雙生薄荷）',
+        volume: '100ml',
+        bottleColor: '#5B8A72',
+        image_url: 'https://www.milleretbertaux.com/wp-content/uploads/2020/05/Menta-y-Menta-100ml.jpg',
+        notes: '摩洛哥薄荷、茶葉、檸檬、烘焙咖啡與木質',
+        price: '約 NT$ 4,200～4,680（約 42～46.8 元/ml）',
+        memo: '摩洛哥薄荷、茶葉與檸檬帶出的清涼草本茶香，與偏好的清透茶韻與草本調相當契合。',
+        order_num: 28
+      },
+      {
+        id: 'buy-7',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'Malin+Goetz',
+        name: 'Cannabis 大麻草淡香精',
+        volume: '50ml',
+        bottleColor: '#4E5D48',
+        image_url: 'https://www.malinandgoetz.com/media/catalog/product/c/a/cannabis_edp_50ml_1.jpg',
+        notes: '佛手柑、黑胡椒、大麻草本白花、雪松、檀香、廣藿香',
+        price: '通路特價約 NT$ 2,741 起（約 54.8 元/ml；專櫃約 NT$ 3,500～3,600）',
+        memo: '後調神似 Aesop 艾底希思，等手邊香水消耗或遇到 2,700 元左右好價可入手。',
+        order_num: 29
+      },
+      {
+        id: 'buy-8',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'Aesop',
+        name: '熾香水 Hwyl',
+        volume: '50ml',
+        bottleColor: '#5D473A',
+        image_url: 'https://www.aesop.com/medias/Aesop-Fragrance-Hwyl-Eau-de-Parfum-50mL-Large-886x1100px.png',
+        notes: '柏樹（羅漢柏）、乳香、岩蘭草、苔蘚、百里香',
+        price: '電商航空版約 NT$ 3,580～4,200（約 71.6～84 元/ml；專櫃 NT$ 6,200）',
+        memo: '高單價名單，走進日本古老檜木森林的煙燻靜謐感，慢慢等免稅或 3,600 元左右好價。',
+        order_num: 30
+      },
+      {
+        id: 'buy-9',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'Liquides Imaginaires 液態創想',
+        name: 'Morning Star（晨曉之星）',
+        volume: '100ml',
+        bottleColor: '#8C7A5B',
+        image_url: 'https://liquidesimaginaires.com/cdn/shop/files/MORNING-STAR-100ML.jpg',
+        notes: '佛手柑、粉紅胡椒、肉桂、焚香、鈴蘭、茉莉、雪松、廣藿香、岩蘭草',
+        price: '約 NT$ 9,396～10,451（約 94～104.5 元/ml）',
+        memo: '以微涼焚香銜接雪松與岩蘭草木質，高單價觀察名單（台灣代理 NOSEWAY 有引進）。',
+        order_num: 31
+      },
+      {
+        id: 'buy-10',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'Perfumer H',
+        name: 'Rain Wood（雨木）',
+        volume: '50ml / 100ml',
+        bottleColor: '#566A68',
+        image_url: 'https://www.perfumerh.com/cdn/shop/files/RainWood_50ml.jpg',
+        notes: '白松香、欖香脂、水汽、雪松、杜松、沒藥',
+        price: '50ml 約 NT$ 5,600～6,200（約 112～124 元/ml）',
+        memo: '白松香、欖香脂、水汽與雪松、杜松交織的潮濕雨後森林木質調，與山雨、松針氛圍高度呼應。',
+        order_num: 32
+      },
+      {
+        id: 'buy-11',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: '郁郁 YùYù',
+        name: '薄霧林間山韻淡香精',
+        volume: '10ml',
+        bottleColor: '#697A64',
+        image_url: 'https://www.yuyu-perfume.com/cdn/shop/files/MistyForest_10ml.jpg',
+        notes: '青草、杜松、蘭花、紫藤花、黑檀木、台灣黃檜、橡樹苔',
+        price: 'NT$ 1,000（約 100 元/ml）',
+        memo: '小容量高單價（100元/ml），順路試香或湊活動再考慮。',
+        order_num: 33
+      },
+      {
+        id: 'buy-12',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'Le Labo',
+        name: '桉樹 20 (Eucalyptus 20)',
+        volume: '50ml / 15ml',
+        bottleColor: '#5A6158',
+        image_url: 'https://www.lelabofragrances.com/media/catalog/product/e/u/eucalyptus_20_50ml.jpg',
+        notes: '尤加利葉、紅百里香、雪松木、乳香、岩薔薇、麝香',
+        price: '50ml 專櫃約 NT$ 7,580～7,800（約 151.6～156 元/ml；免稅代購約 NT$ 4,350）',
+        memo: '療癒遼闊的曠野木質氛圍，單價極高，建議等出國免稅或收 15ml 小容量。',
+        order_num: 34
+      },
+      {
+        id: 'buy-13',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'MATIERE PREMIERE',
+        name: '香櫞古龍淡香精 (Cologne Cédrat)',
+        volume: '50ml / 100ml',
+        bottleColor: '#B59B42',
+        image_url: 'https://matiere-premiere.com/wp-content/uploads/2019/09/Cologne-Cedrat-100ml.jpg',
+        notes: '卡拉布里亞香櫞精油、黑胡椒、粉紅胡椒、佛手柑、巴拉圭瑪黛茶',
+        price: '台灣 10/10 售價約 NT$ 6,200 起（100ml NT$ 8,600，約 86 元/ml）',
+        memo: '明亮柑橘胡椒搭配瑪黛茶尾韻，可先考慮 6ml 隨身瓶解饞。',
+        order_num: 35
+      },
+      {
+        id: 'buy-14',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'MATIERE PREMIERE',
+        name: "黑木之森淡香精 (Bois d'Ébène)",
+        volume: '100ml / 6ml',
+        bottleColor: '#3B322C',
+        image_url: 'https://matiere-premiere.com/wp-content/uploads/2019/09/Bois-dEbene-100ml.jpg',
+        notes: '杜松子、癒創木、廣藿香、深邃暗色木質',
+        price: '台灣 10/10 100ml NT$ 8,600（約 86 元/ml；6ml NT$ 1,500）',
+        memo: '沉穩深邃的暗色木質調，10/10 有推出 6ml 小容量可入手。',
+        order_num: 36
+      },
+      {
+        id: 'buy-15',
+        list: 'buy',
+        sub_category: '個人香水',
+        brand: 'MATIERE PREMIERE',
+        name: '一葉傾橙淡香精 (Neroli Oranger)',
+        volume: '50ml / 100ml',
+        bottleColor: '#C28B4E',
+        image_url: 'https://matiere-premiere.com/wp-content/uploads/2019/09/Neroli-Oranger-100ml.jpg',
+        notes: '佛手柑、苦橙葉、突尼西亞橙花、依蘭、麝香',
+        price: '台灣 10/10 售價約 NT$ 6,200 起（100ml NT$ 8,600，約 86 元/ml）',
+        memo: '清透微苦橙葉與陽光橙花氣息，高單價觀察名單。',
+        order_num: 37
+      }
+    ];
+
+    const STORAGE_KEY_DATA = 'fragrance_journal_cloud_v1';
+    const STORAGE_KEY_API = 'fragrance_gas_webapp_url';
+    const STORAGE_KEY_TOKEN = 'fragrance_access_token';
+    const STORAGE_KEY_UNLOCKED = 'fragrance_session_unlocked';
+
+    // 應用程式狀態
+    let fragrances = [];
+    let currentTab = 'owned';       // 'owned' | 'try' | 'buy'
+    let currentSubFilter = '全部';  // '全部' | '個人香水' | '空間噴霧' | '試管禮盒'
+    let searchQuery = '';
+    let isSortMode = false;
+    let activeDetailId = null;
+    let isEditMode = false;
+    let pendingDeleteId = null;
+    let isScreenLocked = false;
+
+    /**
+     * 將本機快取或 Google 試算表回傳的香氛資料正規化為統一結構
+     */
+    function normalizeItems(rawItems) {
+      if (!Array.isArray(rawItems)) return [];
+      const defaultColorMap = new Map(DEFAULT_FRAGRANCES.map(item => [item.id, item.bottleColor]));
+
+      return rawItems
+        .map((raw, idx) => {
+          if (!raw || typeof raw !== 'object') return null;
+
+          const validLists = ['owned', 'try', 'buy'];
+          const normalizedList = validLists.includes(raw.list) ? raw.list : 'owned';
+
+          const subCatRaw = raw.sub_category ?? raw.subCategory ?? '';
+          const normalizedSub = subCatRaw
+            ? String(subCatRaw).trim()
+            : (normalizedList === 'owned' ? '個人香水' : '個人香水');
+
+          const id = raw.id ? String(raw.id).trim() : `item-${Date.now()}-${idx}`;
+          const parsedOrder = Number(raw.order_num ?? raw.orderNum);
+          const orderNum = Number.isFinite(parsedOrder) && parsedOrder > 0 ? parsedOrder : idx + 1;
+
+          return {
+            id,
+            list: normalizedList,
+            sub_category: normalizedSub,
+            brand: raw.brand ? String(raw.brand).trim() : '',
+            name: raw.name ? String(raw.name).trim() : '',
+            volume: raw.volume ? String(raw.volume).trim() : '',
+            bottleColor: raw.bottleColor || defaultColorMap.get(id) || '#4A5D4E',
+            image_url: raw.image_url ?? raw.imageUrl ?? '',
+            notes: raw.notes ? String(raw.notes).trim() : '',
+            price: raw.price ? String(raw.price).trim() : '',
+            memo: raw.memo ? String(raw.memo).trim() : '',
+            order_num: orderNum
+          };
+        })
+        .filter(item => item && (item.brand || item.name));
+    }
+
+    /**
+     * 儲存目前清單至 localStorage
+     */
+    function saveLocalOnly() {
+      try {
+        fragrances.forEach((item, idx) => {
+          item.order_num = idx + 1;
+        });
+        localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(fragrances));
+        updateCounts();
+      } catch (e) {
+        console.error('儲存本機資料失敗:', e);
+      }
+    }
+
+    /**
+     * 取得設定的 Apps Script Web App URL 與 Access Token
+     */
+    function getApiUrl() {
+      return (localStorage.getItem(STORAGE_KEY_API) || '').trim();
+    }
+
+    function getAccessToken() {
+      return (localStorage.getItem(STORAGE_KEY_TOKEN) || '').trim();
+    }
+
+    function hasConfiguredToken() {
+      return getAccessToken().length > 0;
+    }
+
+    function isSessionUnlocked() {
+      if (!hasConfiguredToken()) return true;
+      return sessionStorage.getItem(STORAGE_KEY_UNLOCKED) === 'true';
+    }
+
+    function setSessionUnlocked(unlocked) {
+      if (unlocked) {
+        sessionStorage.setItem(STORAGE_KEY_UNLOCKED, 'true');
+      } else {
+        sessionStorage.removeItem(STORAGE_KEY_UNLOCKED);
+      }
+    }
+
+    /**
+     * 更新密碼鎖狀態徽章與鎖定按鈕樣式
+     */
+    function updateLockUI() {
+      const configured = hasConfiguredToken();
+      const badge = document.getElementById('pin-status-badge');
+      const lockIcon = document.getElementById('lock-now-icon');
+      const lockBtn = document.getElementById('lock-now-btn');
+
+      if (badge) {
+        if (configured) {
+          badge.textContent = '已啟用密碼鎖';
+          badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-sagePale text-sage font-semibold';
+        } else {
+          badge.textContent = '未設定密碼鎖';
+          badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-sand text-muted font-medium';
+        }
+      }
+
+      if (lockIcon && lockBtn) {
+        if (configured) {
+          lockIcon.className = 'ph-fill ph-lock-simple text-lg text-sage';
+          lockBtn.title = '立即鎖定畫面';
+        } else {
+          lockIcon.className = 'ph ph-lock-open text-lg text-muted';
+          lockBtn.title = '尚未設定密碼（點擊前往設定）';
+        }
+      }
+    }
+
+    /**
+     * 顯示或隱藏解鎖畫面
+     */
+    function showLockScreen(customError = '') {
+      isScreenLocked = true;
+      const lockScreen = document.getElementById('lock-screen');
+      const pinInput = document.getElementById('unlock-pin-input');
+      const errorEl = document.getElementById('unlock-error-msg');
+      const hintEl = document.getElementById('lock-screen-hint');
+
+      hideResetPinConfirm();
+      pinInput.value = '';
+      pinInput.type = 'password';
+      document.getElementById('unlock-eye-icon').className = 'ph ph-eye text-lg';
+
+      if (customError) {
+        errorEl.textContent = customError;
+        errorEl.classList.remove('hidden');
+      } else {
+        errorEl.classList.add('hidden');
+      }
+
+      if (hintEl) {
+        hintEl.textContent = getApiUrl()
+          ? '請輸入您的專屬通行密碼以解鎖清單並同步 Google 試算表。'
+          : '請輸入您的專屬通行密碼以解鎖本機香氛誌。';
+      }
+
+      lockScreen.classList.remove('hidden');
+      setTimeout(() => pinInput.focus(), 80);
+    }
+
+    function hideLockScreen() {
+      isScreenLocked = false;
+      document.getElementById('lock-screen').classList.add('hidden');
+      document.getElementById('unlock-error-msg').classList.add('hidden');
+      hideResetPinConfirm();
+    }
+
+    /**
+     * 處理使用者輸入密碼解鎖
+     */
+    function handleUnlockSubmit(e) {
+      e.preventDefault();
+      const entered = document.getElementById('unlock-pin-input').value.trim();
+      const storedToken = getAccessToken();
+
+      if (!storedToken) {
+        setSessionUnlocked(true);
+        hideLockScreen();
+        return;
+      }
+
+      if (entered === storedToken) {
+        setSessionUnlocked(true);
+        hideLockScreen();
+        updateLockUI();
+        showToast('已解鎖香氛誌');
+        if (getApiUrl()) {
+          syncFromCloud(false);
+        }
+      } else {
+        const errorEl = document.getElementById('unlock-error-msg');
+        errorEl.textContent = '密碼不正確，請重新輸入（或點選下方重設密碼／登出鎖定）。';
+        errorEl.classList.remove('hidden');
+        document.getElementById('unlock-pin-input').select();
+      }
+    }
+
+    /**
+     * 立即鎖定畫面（工具列按鈕）
+     */
+    function lockAppScreen() {
+      if (!hasConfiguredToken()) {
+        openCloudModal();
+        showToast('請先在設定中輸入「專屬同步密碼」再啟用鎖定');
+        return;
+      }
+      setSessionUnlocked(false);
+      showLockScreen();
+    }
+
+    function lockAppScreenFromModal() {
+      if (!hasConfiguredToken()) {
+        showToast('請先輸入密碼並儲存後再鎖定');
+        return;
+      }
+      closeCloudModal();
+      setSessionUnlocked(false);
+      showLockScreen();
+    }
+
+    /**
+     * 重設密碼／登出鎖定（避免被鎖死）
+     */
+    function showResetPinConfirm() {
+      document.getElementById('reset-pin-trigger').classList.add('hidden');
+      document.getElementById('reset-pin-confirm-box').classList.remove('hidden');
+    }
+
+    function hideResetPinConfirm() {
+      const trigger = document.getElementById('reset-pin-trigger');
+      const box = document.getElementById('reset-pin-confirm-box');
+      if (trigger) trigger.classList.remove('hidden');
+      if (box) box.classList.add('hidden');
+    }
+
+    function resetPinAndUnlock() {
+      localStorage.removeItem(STORAGE_KEY_TOKEN);
+      setSessionUnlocked(true);
+      hideLockScreen();
+      updateLockUI();
+      setSyncStatus(getApiUrl() ? 'synced' : 'unconfigured', getApiUrl() ? '已清除密碼鎖（尚未夾帶 Token）' : '本機模式（密碼鎖已重設）');
+      showToast('已重設密碼並解除鎖定');
+    }
+
+    function clearSavedPinAndUnlock() {
+      localStorage.removeItem(STORAGE_KEY_TOKEN);
+      setSessionUnlocked(true);
+      document.getElementById('cloud-token-input').value = '';
+      updateLockUI();
+      showToast('已清除本機通行密碼');
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (!input || !icon) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'ph ph-eye-slash text-base';
+      } else {
+        input.type = 'password';
+        icon.className = 'ph ph-eye text-base';
+      }
+    }
+
+    /**
+     * 更新頂部同步狀態列 UI
+     */
+    function setSyncStatus(state, customMsg = '') {
+      const dot = document.getElementById('sync-status-dot');
+      const cloudDot = document.getElementById('cloud-dot');
+      const text = document.getElementById('sync-status-text');
+      const refreshIcon = document.getElementById('refresh-icon');
+
+      refreshIcon.classList.remove('animate-spin-slow');
+
+      if (state === 'unconfigured') {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400 shrink-0';
+        cloudDot.className = 'absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400';
+        text.textContent = customMsg || '本機模式（點擊設定試算表同步）';
+      } else if (state === 'syncing') {
+        dot.className = 'w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0';
+        cloudDot.className = 'absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-500';
+        refreshIcon.classList.add('animate-spin-slow');
+        text.textContent = customMsg || '正在與 Google 試算表同步...';
+      } else if (state === 'synced') {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-500 shrink-0';
+        cloudDot.className = 'absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500';
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        text.textContent = customMsg || `已與 Google 試算表同步 (${timeStr})`;
+      } else if (state === 'error') {
+        dot.className = 'w-2 h-2 rounded-full bg-red-500 shrink-0';
+        cloudDot.className = 'absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500';
+        text.textContent = customMsg || '雲端連線失敗（目前顯示本機快取）';
+      }
+    }
+
+    /**
+     * 產生高質感香水瓶身向量插圖 (官方圖片載入失敗或留白時優雅降級)
+     */
+    function getBottlePlaceholderSvg(brand, color = '#4A5D4E') {
+      const safeBrand = escapeHtml((brand || 'SCENT').slice(0, 12).toUpperCase());
+      const bgTint = color + '1A';
+      return `
+        <svg viewBox="0 0 120 140" class="w-full h-full object-contain" xmlns="http://www.w3.org/2000/svg">
+          <rect width="120" height="140" rx="16" fill="${bgTint}" />
+          <rect x="44" y="18" width="32" height="18" rx="4" fill="#2C2A29" />
+          <rect x="50" y="36" width="20" height="8" rx="2" fill="#8FA393" />
+          <rect x="28" y="44" width="64" height="78" rx="12" fill="#FFFFFF" stroke="${color}" stroke-width="2.5" />
+          <rect x="32" y="54" width="56" height="64" rx="9" fill="${color}" fill-opacity="0.22" />
+          <rect x="36" y="64" width="48" height="36" rx="4" fill="#F8F7F4" stroke="#E5E0D8" stroke-width="1" />
+          <text x="60" y="80" text-anchor="middle" font-family="Inter, sans-serif" font-size="7" font-weight="700" fill="#2C2A29" letter-spacing="0.5">${safeBrand}</text>
+          <line x1="45" y1="86" x2="75" y2="86" stroke="${color}" stroke-width="1.2" stroke-linecap="round" />
+          <text x="60" y="94" text-anchor="middle" font-family="Inter, sans-serif" font-size="5.5" fill="#6E6A66">PARFUM</text>
+        </svg>
+      `;
+    }
+
+    /**
+     * 渲染香水瓶身圖片區塊
+     */
+    function renderBottleVisual(item, sizeClass = 'w-14 h-16') {
+      const imgUrl = (item.image_url || '').trim();
+      const fallbackSvg = getBottlePlaceholderSvg(item.brand, item.bottleColor || '#4A5D4E');
+      if (imgUrl !== '') {
+        return `
+          <div class="${sizeClass} rounded-xl bg-cream border border-sand overflow-hidden shrink-0 relative flex items-center justify-center">
+            <img src="${escapeHtml(imgUrl)}"
+                 alt="${escapeHtml(item.name)}"
+                 class="w-full h-full object-cover transition-opacity duration-300"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+            <div class="hidden w-full h-full items-center justify-center p-0.5">
+              ${fallbackSvg}
+            </div>
+          </div>
+        `;
+      }
+      return `
+        <div class="${sizeClass} rounded-xl bg-cream border border-sand overflow-hidden shrink-0 flex items-center justify-center p-0.5">
+          ${fallbackSvg}
+        </div>
+      `;
+    }
+
+    /**
+     * 初始化應用程式
+     */
+    function initApp() {
+      document.getElementById('gas-code-box').value = GAS_TEMPLATE_CODE;
+      loadLocalData();
+      updateCounts();
+      updateLockUI();
+      renderList();
+
+      if (hasConfiguredToken() && !isSessionUnlocked()) {
+        showLockScreen();
+        return;
+      }
+
+      const apiUrl = getApiUrl();
+      if (apiUrl) {
+        syncFromCloud(false);
+      } else {
+        setSyncStatus('unconfigured');
+      }
+    }
+
+    /**
+     * 從 localStorage 載入快取資料
+     */
+    function loadLocalData() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY_DATA);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            fragrances = normalizeItems(parsed);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('讀取本機快取失敗:', e);
+      }
+      fragrances = normalizeItems(JSON.parse(JSON.stringify(DEFAULT_FRAGRANCES)));
+      saveLocalOnly();
+    }
+
+    /**
+     * 儲存到本地並自動向 Google 試算表進行雙向寫入同步 (POST 夾帶 token)
+     */
+    async function saveAndSyncCloud() {
+      saveLocalOnly();
+      const apiUrl = getApiUrl();
+      if (!apiUrl) return;
+
+      const token = getAccessToken();
+      setSyncStatus('syncing', '正在同步寫入 Google 試算表...');
+      const payload = JSON.stringify({
+        action: 'sync_all',
+        token: token,
+        items: fragrances
+      });
+
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: payload
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        const textBody = await res.text();
+        try {
+          const jsonBody = JSON.parse(textBody);
+          if (jsonBody && (jsonBody.ok === false || jsonBody.error === 'Unauthorized')) {
+            setSyncStatus('error', '同步密碼驗證失敗（Unauthorized）');
+            setSessionUnlocked(false);
+            showLockScreen('雲端驗證密碼不符，請重新輸入正確密碼。');
+            return;
+          }
+        } catch (_) {
+          // 非 JSON 回應時若 HTTP 200 視為已送出
+        }
+
+        setSyncStatus('synced', '已即時同步至 Google 試算表');
+      } catch (err) {
+        // 若瀏覽器因跨網域限制阻擋讀取回應，自動 fallback 使用 no-cors 送出寫入請求
+        try {
+          await fetch(apiUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: payload
+          });
+          setSyncStatus('synced', '已送出同步至 Google 試算表');
+        } catch (fallbackErr) {
+          console.error('雲端寫入同步失敗:', fallbackErr);
+          setSyncStatus('error', '雲端寫入失敗，已暫存於本機');
+        }
+      }
+    }
+
+    /**
+     * 從 Google 試算表讀取最新清單 (GET?token=...)
+     */
+    async function syncFromCloud(isManual = false) {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) {
+        if (isManual) {
+          openCloudModal();
+          showToast('請先設定 Google Apps Script 網址');
+        }
+        return;
+      }
+
+      const token = getAccessToken();
+      const separator = apiUrl.includes('?') ? '&' : '?';
+      const requestUrl = token
+        ? `${apiUrl}${separator}token=${encodeURIComponent(token)}&_t=${Date.now()}`
+        : `${apiUrl}${separator}_t=${Date.now()}`;
+
+      setSyncStatus('syncing', '正在從 Google 試算表讀取...');
+      try {
+        const res = await fetch(requestUrl, { method: 'GET', cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        if (data && (data.ok === false || data.error === 'Unauthorized')) {
+          setSyncStatus('error', '密碼驗證失敗，請重新輸入密碼');
+          setSessionUnlocked(false);
+          showLockScreen('Google 試算表拒絕存取：通行密碼不符，請重新輸入。');
+          return;
+        }
+
+        const remoteItems = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : null);
+        if (!remoteItems) throw new Error('回傳格式不符');
+
+        if (remoteItems.length === 0) {
+          setSyncStatus('synced', '試算表目前為空（可在設定中寫入預設清單）');
+          if (isManual) showToast('試算表目前沒有資料列');
+          return;
+        }
+
+        fragrances = normalizeItems(remoteItems).sort((a, b) => a.order_num - b.order_num);
+        saveLocalOnly();
+        renderList();
+        setSyncStatus('synced');
+        if (isManual) showToast(`已從試算表同步 ${fragrances.length} 項香氛`);
+      } catch (err) {
+        console.error('從試算表讀取失敗:', err);
+        setSyncStatus('error', '雲端讀取失敗，顯示本機快取');
+        if (isManual) showToast('讀取失敗，請確認網址、密碼與部署權限');
+      }
+    }
+
+    /**
+     * 雲端設定彈窗操作
+     */
+    function openCloudModal() {
+      document.getElementById('cloud-url-input').value = getApiUrl();
+      document.getElementById('cloud-token-input').value = getAccessToken();
+      document.getElementById('cloud-token-input').type = 'password';
+      document.getElementById('toggle-token-eye').className = 'ph ph-eye text-base';
+      updateLockUI();
+      cancelResetConfirm();
+      document.getElementById('cloud-modal').classList.remove('hidden');
+    }
+
+    function closeCloudModal() {
+      document.getElementById('cloud-modal').classList.add('hidden');
+    }
+
+    function saveCloudUrlAndPull() {
+      const val = document.getElementById('cloud-url-input').value.trim();
+      const tokenVal = document.getElementById('cloud-token-input').value.trim();
+
+      if (tokenVal) {
+        localStorage.setItem(STORAGE_KEY_TOKEN, tokenVal);
+        setSessionUnlocked(true);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_TOKEN);
+        setSessionUnlocked(true);
+      }
+      updateLockUI();
+
+      if (!val) {
+        localStorage.removeItem(STORAGE_KEY_API);
+        setSyncStatus('unconfigured');
+        closeCloudModal();
+        showToast(tokenVal ? '已儲存通行密碼（本機模式）' : '已清除雲端網址，切換回本機模式');
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY_API, val);
+      closeCloudModal();
+      syncFromCloud(true);
+    }
+
+    async function pushAllToCloud(fromModal = false) {
+      const inputEl = document.getElementById('cloud-url-input');
+      const tokenEl = document.getElementById('cloud-token-input');
+      const val = (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : getApiUrl();
+      const tokenVal = tokenEl ? tokenEl.value.trim() : getAccessToken();
+
+      if (tokenVal) {
+        localStorage.setItem(STORAGE_KEY_TOKEN, tokenVal);
+        setSessionUnlocked(true);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_TOKEN);
+        setSessionUnlocked(true);
+      }
+      updateLockUI();
+
+      if (!val) {
+        showToast('請先貼上 Google Apps Script 網址');
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY_API, val);
+      if (fromModal) closeCloudModal();
+      await saveAndSyncCloud();
+      showToast(`已將目前 ${fragrances.length} 項香氛寫入 Google 試算表`);
+    }
+
+    function copyGasCode() {
+      const textarea = document.getElementById('gas-code-box');
+      textarea.select();
+      textarea.setSelectionRange(0, 99999);
+      try {
+        document.execCommand('copy');
+        showToast('已複製 Google Apps Script 程式碼');
+      } catch (e) {
+        showToast('複製失敗，請手動全選複製');
+      }
+    }
+
+    /**
+     * 更新分頁與子分類數量徽章
+     */
+    function updateCounts() {
+      const ownedItems = fragrances.filter(item => item.list === 'owned');
+      const tryItems = fragrances.filter(item => item.list === 'try');
+      const buyItems = fragrances.filter(item => item.list === 'buy');
+
+      document.getElementById('count-owned').textContent = ownedItems.length;
+      document.getElementById('count-try').textContent = tryItems.length;
+      document.getElementById('count-buy').textContent = buyItems.length;
+
+      const subCounts = {
+        '全部': ownedItems.length,
+        '個人香水': ownedItems.filter(i => i.sub_category === '個人香水').length,
+        '空間噴霧': ownedItems.filter(i => i.sub_category === '空間噴霧').length,
+        '試管禮盒': ownedItems.filter(i => i.sub_category === '試管禮盒').length
+      };
+
+      document.querySelectorAll('.sub-btn').forEach(btn => {
+        const sub = btn.getAttribute('data-sub');
+        btn.textContent = `${sub} (${subCounts[sub] ?? 0})`;
+      });
+    }
+
+    /**
+     * 切換主分頁 (owned / try / buy)
+     */
+    function switchTab(tab) {
+      currentTab = tab;
+      ['owned', 'try', 'buy'].forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        const badge = document.getElementById(`count-${t}`);
+        if (t === tab) {
+          btn.className = 'tab-btn py-2 px-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 bg-paper text-charcoal shadow-sm';
+          badge.className = 'px-1.5 py-0.5 text-[10px] rounded-full bg-sage text-white font-semibold';
+        } else {
+          btn.className = 'tab-btn py-2 px-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 text-muted hover:text-charcoal';
+          badge.className = 'px-1.5 py-0.5 text-[10px] rounded-full bg-sand text-muted font-semibold';
+        }
+      });
+
+      const subBar = document.getElementById('subfilter-bar');
+      if (tab === 'owned') {
+        subBar.classList.remove('hidden');
+      } else {
+        subBar.classList.add('hidden');
+      }
+
+      renderList();
+    }
+
+    /**
+     * 設定「已持有」子分類篩選
+     */
+    function setSubFilter(sub) {
+      currentSubFilter = sub;
+      document.querySelectorAll('.sub-btn').forEach(btn => {
+        if (btn.getAttribute('data-sub') === sub) {
+          btn.className = 'sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-charcoal text-white transition-all';
+        } else {
+          btn.className = 'sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-paper border border-sand text-muted hover:text-charcoal transition-all';
+        }
+      });
+      renderList();
+    }
+
+    /**
+     * 搜尋處理
+     */
+    function handleSearch(val) {
+      searchQuery = val.trim().toLowerCase();
+      const clearBtn = document.getElementById('clear-search-btn');
+      if (searchQuery.length > 0) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+      renderList();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      handleSearch('');
+    }
+
+    /**
+     * 切換排序/管理模式
+     */
+    function toggleSortMode() {
+      isSortMode = !isSortMode;
+      const btn = document.getElementById('toggle-sort-btn');
+      const btnText = document.getElementById('sort-btn-text');
+      const banner = document.getElementById('sort-banner');
+
+      if (isSortMode) {
+        btn.className = 'px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all border border-sage bg-sage text-white active:scale-95';
+        btn.querySelector('i').className = 'ph-bold ph-check text-sm text-white';
+        btnText.textContent = '完成';
+        banner.classList.remove('hidden');
+      } else {
+        btn.className = 'px-2.5 py-2 rounded-xl text-xs font-medium flex items-center gap-1 transition-all border border-sand bg-paper text-charcoal active:scale-95';
+        btn.querySelector('i').className = 'ph ph-arrows-down-up text-sm text-sage';
+        btnText.textContent = '排序/管理';
+        banner.classList.add('hidden');
+      }
+      renderList();
+    }
+
+    /**
+     * 取得目前篩選後的清單項目
+     */
+    function getFilteredItems() {
+      return fragrances.filter(item => {
+        if (item.list !== currentTab) return false;
+        if (currentTab === 'owned' && currentSubFilter !== '全部' && item.sub_category !== currentSubFilter) {
+          return false;
+        }
+        if (searchQuery) {
+          const hay = `${item.brand} ${item.name} ${item.notes} ${item.memo} ${item.price}`.toLowerCase();
+          return hay.includes(searchQuery);
+        }
+        return true;
+      });
+    }
+
+    /**
+     * 渲染主清單卡片
+     */
+    function renderList() {
+      const container = document.getElementById('list-container');
+      const items = getFilteredItems();
+
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="py-16 px-6 text-center space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-sand/70 text-muted mx-auto flex items-center justify-center">
+              <i class="ph ph-sparkle text-2xl"></i>
+            </div>
+            <p class="text-sm font-medium text-charcoal">目前沒有符合的香氛紀錄</p>
+            <p class="text-xs text-muted">您可以清除搜尋關鍵字，或點擊右上角「新增」加入香氛。</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = items.map((item, idx) => {
+        let badgeHtml = '';
+        if (item.list === 'owned' && item.sub_category) {
+          const badgeStyle = item.sub_category === '個人香水'
+            ? 'bg-sagePale text-sage'
+            : item.sub_category === '空間噴霧'
+              ? 'bg-woodPale text-wood'
+              : 'bg-sand text-charcoal';
+          badgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-medium shrink-0 ${badgeStyle}">${escapeHtml(item.sub_category)}</span>`;
+        } else if (item.price) {
+          const shortPrice = item.price.split('（')[0].trim();
+          badgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-medium bg-woodPale text-wood max-w-[115px] truncate shrink-0">${escapeHtml(shortPrice)}</span>`;
+        }
+
+        const volumeTag = item.volume
+          ? `<span class="text-[11px] text-muted font-normal ml-1">(${escapeHtml(item.volume)})</span>`
+          : '';
+
+        const notesPreview = item.notes
+          ? `<p class="text-xs text-muted line-clamp-1 mt-1 flex items-center gap-1">
+               <i class="ph ph-leaf text-sageLight shrink-0"></i>
+               <span>${escapeHtml(item.notes)}</span>
+             </p>`
+          : (item.memo
+              ? `<p class="text-xs text-muted line-clamp-1 mt-1">${escapeHtml(item.memo)}</p>`
+              : '');
+
+        const thumbnailHtml = renderBottleVisual(item, 'w-14 h-16');
+
+        const rightActionHtml = isSortMode
+          ? `
+            <div class="flex items-center gap-1 shrink-0 pl-1" onclick="event.stopPropagation()">
+              <div class="flex flex-col gap-1">
+                <button onclick="moveItemOrder('${item.id}', -1)" ${idx === 0 ? 'disabled' : ''}
+                  class="w-7 h-7 rounded-lg bg-cream border border-sand flex items-center justify-center text-charcoal disabled:opacity-30 active:bg-sage active:text-white transition-colors"
+                  title="上移">
+                  <i class="ph-bold ph-caret-up text-xs"></i>
+                </button>
+                <button onclick="moveItemOrder('${item.id}', 1)" ${idx === items.length - 1 ? 'disabled' : ''}
+                  class="w-7 h-7 rounded-lg bg-cream border border-sand flex items-center justify-center text-charcoal disabled:opacity-30 active:bg-sage active:text-white transition-colors"
+                  title="下移">
+                  <i class="ph-bold ph-caret-down text-xs"></i>
+                </button>
+              </div>
+              <button onclick="promptDeleteFragrance('${item.id}')"
+                class="w-8 h-14 rounded-lg bg-red-50/80 border border-red-200/70 flex items-center justify-center text-red-600 active:bg-red-600 active:text-white transition-colors"
+                title="刪除此香氛">
+                <i class="ph ph-trash text-base"></i>
+              </button>
+              <div class="drag-handle w-6 h-14 rounded-lg flex items-center justify-center text-muted cursor-grab active:cursor-grabbing touch-none"
+                title="長按拖曳排序">
+                <i class="ph-bold ph-dots-six-vertical text-base"></i>
+              </div>
+            </div>
+          `
+          : `
+            <div class="shrink-0 pl-1 text-muted/50">
+              <i class="ph ph-caret-right text-base"></i>
+            </div>
+          `;
+
+        return `
+          <div data-id="${item.id}"
+            onclick="${isSortMode ? '' : `openDetailModal('${item.id}')`}"
+            class="fragrance-card group bg-paper border border-sand/90 rounded-2xl p-3 shadow-soft flex items-center gap-3 transition-all duration-200 ${isSortMode ? 'select-none' : 'active:scale-[0.99] cursor-pointer hover:border-sageLight'}">
+            ${thumbnailHtml}
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-1.5 mb-0.5">
+                <span class="text-[11px] font-semibold tracking-wider uppercase text-sage truncate">${escapeHtml(item.brand)}</span>
+                ${badgeHtml}
+              </div>
+              <h3 class="text-[14px] font-semibold text-charcoal leading-snug line-clamp-2">
+                ${escapeHtml(item.name)}${volumeTag}
+              </h3>
+              ${notesPreview}
+            </div>
+            ${rightActionHtml}
+          </div>
+        `;
+      }).join('');
+
+      attachDragEvents();
+    }
+
+    /**
+     * 上移 / 下移按鈕調整順序並同步至雲端
+     */
+    function moveItemOrder(id, direction) {
+      const visibleItems = getFilteredItems();
+      const visibleIndex = visibleItems.findIndex(i => i.id === id);
+      const targetVisibleIndex = visibleIndex + direction;
+
+      if (visibleIndex < 0 || targetVisibleIndex < 0 || targetVisibleIndex >= visibleItems.length) {
+        return;
+      }
+
+      const itemA = visibleItems[visibleIndex];
+      const itemB = visibleItems[targetVisibleIndex];
+
+      const globalIndexA = fragrances.findIndex(i => i.id === itemA.id);
+      const globalIndexB = fragrances.findIndex(i => i.id === itemB.id);
+
+      [fragrances[globalIndexA], fragrances[globalIndexB]] = [fragrances[globalIndexB], fragrances[globalIndexA]];
+      saveAndSyncCloud();
+      renderList();
+    }
+
+    /**
+     * 手機觸控長按拖曳排序實作
+     */
+    function attachDragEvents() {
+      const container = document.getElementById('list-container');
+      const cards = container.querySelectorAll('.fragrance-card');
+
+      cards.forEach(card => {
+        let pressTimer = null;
+        let isDragging = false;
+        let startY = 0;
+        let cloneEl = null;
+        let placeholderEl = null;
+        let cardRect = null;
+
+        const handleStart = (clientY, isHandle) => {
+          const delay = (isSortMode && isHandle) ? 30 : 380;
+          startY = clientY;
+
+          pressTimer = setTimeout(() => {
+            isDragging = true;
+            if (navigator.vibrate) navigator.vibrate(25);
+
+            cardRect = card.getBoundingClientRect();
+
+            placeholderEl = document.createElement('div');
+            placeholderEl.className = 'drag-placeholder';
+            placeholderEl.style.height = `${cardRect.height}px`;
+
+            cloneEl = card.cloneNode(true);
+            cloneEl.classList.add('dragging-card');
+            cloneEl.style.position = 'fixed';
+            cloneEl.style.left = `${cardRect.left}px`;
+            cloneEl.style.top = `${cardRect.top}px`;
+            cloneEl.style.width = `${cardRect.width}px`;
+            cloneEl.style.margin = '0';
+            cloneEl.style.pointerEvents = 'none';
+
+            card.parentNode.insertBefore(placeholderEl, card);
+            card.style.display = 'none';
+            document.body.appendChild(cloneEl);
+          }, delay);
+        };
+
+        const handleMove = (clientY, e) => {
+          if (!isDragging) {
+            if (Math.abs(clientY - startY) > 10 && pressTimer) {
+              clearTimeout(pressTimer);
+              pressTimer = null;
+            }
+            return;
+          }
+
+          if (e.cancelable) e.preventDefault();
+          const deltaY = clientY - startY;
+          cloneEl.style.top = `${cardRect.top + deltaY}px`;
+
+          const siblings = Array.from(container.querySelectorAll('.fragrance-card:not([style*="display: none"])'));
+          for (const sib of siblings) {
+            const sibRect = sib.getBoundingClientRect();
+            const sibMidY = sibRect.top + sibRect.height / 2;
+            if (clientY < sibMidY) {
+              container.insertBefore(placeholderEl, sib);
+              return;
+            }
+          }
+          container.appendChild(placeholderEl);
+        };
+
+        const handleEnd = () => {
+          if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+          }
+          if (!isDragging) return;
+
+          isDragging = false;
+          if (cloneEl) {
+            cloneEl.remove();
+            cloneEl = null;
+          }
+          if (placeholderEl) {
+            container.insertBefore(card, placeholderEl);
+            placeholderEl.remove();
+            placeholderEl = null;
+          }
+          card.style.display = '';
+
+          const newOrderedVisibleIds = Array.from(container.querySelectorAll('.fragrance-card'))
+            .map(el => el.getAttribute('data-id'));
+
+          reorderFragrancesByVisibleIds(newOrderedVisibleIds);
+        };
+
+        card.addEventListener('touchstart', (e) => {
+          if (e.touches.length !== 1) return;
+          const isHandle = !!e.target.closest('.drag-handle');
+          handleStart(e.touches[0].clientY, isHandle);
+        }, { passive: true });
+
+        card.addEventListener('touchmove', (e) => {
+          if (e.touches.length !== 1) return;
+          handleMove(e.touches[0].clientY, e);
+        }, { passive: false });
+
+        card.addEventListener('touchend', handleEnd);
+        card.addEventListener('touchcancel', handleEnd);
+      });
+    }
+
+    function reorderFragrancesByVisibleIds(newVisibleIds) {
+      if (!newVisibleIds || newVisibleIds.length === 0) return;
+
+      const targetSlots = [];
+      fragrances.forEach((item, index) => {
+        if (newVisibleIds.includes(item.id)) {
+          targetSlots.push(index);
+        }
+      });
+
+      const itemMap = new Map(fragrances.map(i => [i.id, i]));
+      targetSlots.forEach((globalIdx, slotIdx) => {
+        const id = newVisibleIds[slotIdx];
+        if (itemMap.has(id)) {
+          fragrances[globalIdx] = itemMap.get(id);
+        }
+      });
+
+      saveAndSyncCloud();
+      renderList();
+      showToast('已更新清單排序');
+    }
+
+    /**
+     * 底部細項抽屜開啟與關閉
+     */
+    function openDetailModal(id) {
+      activeDetailId = id;
+      isEditMode = false;
+      renderDetailSheet();
+
+      const modal = document.getElementById('detail-modal');
+      const backdrop = document.getElementById('detail-backdrop');
+      const panel = document.getElementById('detail-panel');
+
+      modal.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        backdrop.classList.remove('opacity-0');
+        panel.classList.remove('translate-y-full');
+      });
+    }
+
+    function closeDetailModal() {
+      const backdrop = document.getElementById('detail-backdrop');
+      const panel = document.getElementById('detail-panel');
+
+      backdrop.classList.add('opacity-0');
+      panel.classList.add('translate-y-full');
+      setTimeout(() => {
+        document.getElementById('detail-modal').classList.add('hidden');
+        activeDetailId = null;
+        isEditMode = false;
+      }, 300);
+    }
+
+    function toggleEditMode() {
+      isEditMode = !isEditMode;
+      renderDetailSheet();
+    }
+
+    /**
+     * 渲染底部細項抽屜內容 (檢視模式 / 編輯表單)
+     */
+    function renderDetailSheet() {
+      const item = fragrances.find(i => i.id === activeDetailId);
+      if (!item) return;
+
+      const listNames = {
+        owned: '已持有',
+        try: '待試香',
+        buy: '待購買'
+      };
+
+      document.getElementById('detail-list-badge').textContent = listNames[item.list] || '香氛';
+      const subBadge = document.getElementById('detail-sub-badge');
+      if (item.sub_category) {
+        subBadge.textContent = item.sub_category;
+        subBadge.classList.remove('hidden');
+      } else {
+        subBadge.classList.add('hidden');
+      }
+
+      const editBtnLabel = document.getElementById('edit-btn-label');
+      editBtnLabel.textContent = isEditMode ? '取消編輯' : '編輯';
+
+      const contentEl = document.getElementById('detail-content');
+
+      if (!isEditMode) {
+        // ========== 檢視模式 ==========
+        const otherLists = [
+          { key: 'owned', label: '移至「已持有」', icon: 'ph-check-circle' },
+          { key: 'try', label: '移至「待試香」', icon: 'ph-test-tube' },
+          { key: 'buy', label: '移至「待購買」', icon: 'ph-shopping-bag' }
+        ].filter(l => l.key !== item.list);
+
+        const heroVisual = renderBottleVisual(item, 'w-28 h-32 shadow-sm');
+
+        contentEl.innerHTML = `
+          <!-- 頂部品牌名稱與官方瓶身照片 -->
+          <div class="flex items-center gap-4">
+            ${heroVisual}
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-bold tracking-widest uppercase text-sage mb-1">${escapeHtml(item.brand)}</p>
+              <h2 class="font-serif text-lg font-bold text-charcoal leading-snug">${escapeHtml(item.name)}</h2>
+              ${item.volume ? `<p class="text-xs text-muted mt-1.5">規格容量：${escapeHtml(item.volume)}</p>` : ''}
+            </div>
+          </div>
+
+          <!-- 資訊區塊卡片 -->
+          <div class="space-y-3">
+            <div class="bg-cream rounded-2xl p-3.5 border border-sand">
+              <div class="flex items-center gap-1.5 text-xs font-semibold text-sage mb-1.5">
+                <i class="ph-fill ph-leaf"></i>
+                <span>香調與關鍵香材</span>
+              </div>
+              <p class="text-sm text-charcoal leading-relaxed">
+                ${item.notes ? escapeHtml(item.notes) : '<span class="text-muted/60 text-xs">尚未填寫香調資訊，點擊右上角「編輯」可補充</span>'}
+              </p>
+            </div>
+
+            ${item.price ? `
+              <div class="bg-cream rounded-2xl p-3.5 border border-sand">
+                <div class="flex items-center gap-1.5 text-xs font-semibold text-wood mb-1">
+                  <i class="ph-fill ph-tag"></i>
+                  <span>參考價格 / 單位成本</span>
+                </div>
+                <p class="text-sm text-charcoal font-medium">${escapeHtml(item.price)}</p>
+              </div>
+            ` : ''}
+
+            <div class="bg-cream rounded-2xl p-3.5 border border-sand">
+              <div class="flex items-center gap-1.5 text-xs font-semibold text-charcoal mb-1.5">
+                <i class="ph-fill ph-notebook text-sage"></i>
+                <span>個人筆記 / 試香與購買管道</span>
+              </div>
+              <p class="text-sm text-charcoal/90 leading-relaxed whitespace-pre-line">
+                ${item.memo ? escapeHtml(item.memo) : '<span class="text-muted/60 text-xs">暫無筆記，點擊右上角「編輯」記錄您的試香心得或疊香比例。</span>'}
+              </p>
+            </div>
+          </div>
+
+          <!-- 跨清單快速轉移按鈕組 -->
+          <div class="pt-1">
+            <p class="text-xs font-medium text-muted mb-2">跨清單一鍵轉移（自動同步雲端）</p>
+            <div class="grid grid-cols-2 gap-2.5">
+              ${otherLists.map(target => `
+                <button onclick="moveItemToList('${item.id}', '${target.key}')"
+                  class="py-3 px-3 rounded-2xl bg-sagePale/85 hover:bg-sage text-sage hover:text-white border border-sageLight/40 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all">
+                  <i class="ph-bold ${target.icon} text-base"></i>
+                  <span>${target.label}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- 刪除按鈕 (點擊跳出二次確認視窗) -->
+          <div class="pt-3 pb-4 border-t border-sand">
+            <button onclick="promptDeleteFragrance('${item.id}')"
+              class="w-full py-3 rounded-2xl bg-red-50/70 hover:bg-red-50 border border-red-200/80 text-red-600 text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all">
+              <i class="ph-bold ph-trash text-base"></i>
+              <span>刪除此香氛紀錄</span>
+            </button>
+          </div>
+        `;
+      } else {
+        // ========== 編輯模式 ==========
+        contentEl.innerHTML = `
+          <form onsubmit="saveEditedItem(event)" class="space-y-3.5 pb-6">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-muted mb-1">所屬清單</label>
+                <select id="edit-list" class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage">
+                  <option value="owned" ${item.list === 'owned' ? 'selected' : ''}>已持有</option>
+                  <option value="try" ${item.list === 'try' ? 'selected' : ''}>待試香</option>
+                  <option value="buy" ${item.list === 'buy' ? 'selected' : ''}>待購買</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-muted mb-1">分類標籤</label>
+                <select id="edit-sub" class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage">
+                  <option value="個人香水" ${item.sub_category === '個人香水' ? 'selected' : ''}>個人香水</option>
+                  <option value="空間噴霧" ${item.sub_category === '空間噴霧' ? 'selected' : ''}>空間噴霧</option>
+                  <option value="試管禮盒" ${item.sub_category === '試管禮盒' ? 'selected' : ''}>試管禮盒</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2.5">
+              <div class="col-span-2">
+                <label class="block text-xs font-medium text-muted mb-1">品牌名稱 *</label>
+                <input type="text" id="edit-brand" required value="${escapeHtml(item.brand)}"
+                  class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-muted mb-1">容量規格</label>
+                <input type="text" id="edit-volume" value="${escapeHtml(item.volume || '')}" placeholder="50ml"
+                  class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-muted mb-1">香水品名 *</label>
+              <input type="text" id="edit-name" required value="${escapeHtml(item.name)}"
+                class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-muted mb-1">官方商品照片網址 (Image URL)</label>
+              <input type="url" id="edit-image" value="${escapeHtml(item.image_url || '')}"
+                oninput="previewEditImage(this.value)"
+                placeholder="https://... (貼上圖片網址可替換瓶身照片)"
+                class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage" />
+              <div id="edit-image-preview" class="mt-2 flex items-center gap-2.5 ${item.image_url ? '' : 'hidden'}">
+                <img id="edit-preview-img" src="${escapeHtml(item.image_url || '')}" alt="預覽圖"
+                  class="w-12 h-14 rounded-lg object-cover border border-sand bg-cream"
+                  onerror="this.parentElement.classList.add('hidden')" />
+                <span class="text-[11px] text-muted">即時圖片預覽</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-muted mb-1">香調與主要香材</label>
+              <textarea id="edit-notes" rows="2"
+                class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage">${escapeHtml(item.notes || '')}</textarea>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-muted mb-1">參考價格 / 單價</label>
+              <input type="text" id="edit-price" value="${escapeHtml(item.price || '')}" placeholder="例如：NT$ 3,680（約 36.8 元/ml）"
+                class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-muted mb-1">個人筆記 / 試香與購買管道</label>
+              <textarea id="edit-memo" rows="4"
+                class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage">${escapeHtml(item.memo || '')}</textarea>
+            </div>
+
+            <div class="pt-2">
+              <button type="submit"
+                class="w-full py-3.5 rounded-2xl bg-sage text-white font-semibold text-sm shadow-md hover:bg-[#3E4F42] active:scale-[0.99] transition-all">
+                儲存變更並同步雲端
+              </button>
+            </div>
+          </form>
+        `;
+      }
+    }
+
+    function previewEditImage(url) {
+      const wrap = document.getElementById('edit-image-preview');
+      const img = document.getElementById('edit-preview-img');
+      if (url && url.trim()) {
+        img.src = url.trim();
+        wrap.classList.remove('hidden');
+      } else {
+        wrap.classList.add('hidden');
+      }
+    }
+
+    /**
+     * 儲存編輯後的香氛資料並寫入雲端
+     */
+    function saveEditedItem(e) {
+      e.preventDefault();
+      const idx = fragrances.findIndex(i => i.id === activeDetailId);
+      if (idx === -1) return;
+
+      fragrances[idx] = {
+        ...fragrances[idx],
+        list: document.getElementById('edit-list').value,
+        sub_category: document.getElementById('edit-sub').value,
+        brand: document.getElementById('edit-brand').value.trim(),
+        volume: document.getElementById('edit-volume').value.trim(),
+        name: document.getElementById('edit-name').value.trim(),
+        image_url: document.getElementById('edit-image').value.trim(),
+        notes: document.getElementById('edit-notes').value.trim(),
+        price: document.getElementById('edit-price').value.trim(),
+        memo: document.getElementById('edit-memo').value.trim()
+      };
+
+      saveAndSyncCloud();
+      isEditMode = false;
+      renderDetailSheet();
+      renderList();
+      showToast('已儲存香氛變更');
+    }
+
+    /**
+     * 跨清單快速轉移香氛
+     */
+    function moveItemToList(id, targetList) {
+      const idx = fragrances.findIndex(i => i.id === id);
+      if (idx === -1) return;
+
+      const item = fragrances[idx];
+      item.list = targetList;
+      if (targetList === 'owned' && !item.sub_category) {
+        item.sub_category = '個人香水';
+      }
+
+      fragrances.splice(idx, 1);
+      fragrances.unshift(item);
+
+      saveAndSyncCloud();
+      closeDetailModal();
+      renderList();
+
+      const targetLabel = targetList === 'owned' ? '已持有' : targetList === 'try' ? '待試香' : '待購買';
+      showToast(`已移至「${targetLabel}」清單`);
+    }
+
+    /**
+     * 刪除二次確認彈窗控制
+     */
+    function promptDeleteFragrance(id) {
+      const item = fragrances.find(i => i.id === id);
+      if (!item) return;
+
+      pendingDeleteId = id;
+      document.getElementById('delete-target-name').textContent = `${item.brand} — ${item.name}`;
+      document.getElementById('delete-confirm-modal').classList.remove('hidden');
+    }
+
+    function closeDeleteConfirmModal() {
+      pendingDeleteId = null;
+      document.getElementById('delete-confirm-modal').classList.add('hidden');
+    }
+
+    function executeConfirmedDelete() {
+      if (!pendingDeleteId) return;
+      const targetId = pendingDeleteId;
+
+      fragrances = fragrances.filter(i => i.id !== targetId);
+      saveAndSyncCloud();
+      closeDeleteConfirmModal();
+
+      if (activeDetailId === targetId) {
+        closeDetailModal();
+      }
+      renderList();
+      showToast('已刪除該項香氛並同步');
+    }
+
+    /**
+     * 新增香氛抽屜控制
+     */
+    function openAddModal() {
+      const form = document.getElementById('add-form');
+      form.reset();
+      document.getElementById('add-list').value = currentTab;
+      toggleAddSubCategory();
+
+      const modal = document.getElementById('add-modal');
+      const backdrop = document.getElementById('add-backdrop');
+      const panel = document.getElementById('add-panel');
+
+      modal.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        backdrop.classList.remove('opacity-0');
+        panel.classList.remove('translate-y-full');
+      });
+    }
+
+    function closeAddModal() {
+      const backdrop = document.getElementById('add-backdrop');
+      const panel = document.getElementById('add-panel');
+
+      backdrop.classList.add('opacity-0');
+      panel.classList.add('translate-y-full');
+      setTimeout(() => {
+        document.getElementById('add-modal').classList.add('hidden');
+      }, 300);
+    }
+
+    function toggleAddSubCategory() {
+      const listVal = document.getElementById('add-list').value;
+      const subWrapper = document.getElementById('add-sub-wrapper');
+      const volWrapper = document.getElementById('add-volume-wrapper');
+      const volRowOwned = document.getElementById('add-volume-row-owned');
+
+      if (listVal === 'owned') {
+        subWrapper.classList.remove('hidden');
+        volWrapper.classList.add('hidden');
+        volRowOwned.classList.remove('hidden');
+      } else {
+        subWrapper.classList.add('hidden');
+        volWrapper.classList.remove('hidden');
+        volRowOwned.classList.add('hidden');
+      }
+    }
+
+    function handleAddSubmit(e) {
+      e.preventDefault();
+      const targetList = document.getElementById('add-list').value;
+      const subCategory = targetList === 'owned' ? document.getElementById('add-sub').value : '個人香水';
+      const volume = targetList === 'owned'
+        ? document.getElementById('add-volume-owned').value.trim()
+        : document.getElementById('add-volume').value.trim();
+
+      const newItem = {
+        id: 'custom-' + Date.now(),
+        list: targetList,
+        sub_category: subCategory,
+        brand: document.getElementById('add-brand').value.trim(),
+        name: document.getElementById('add-name').value.trim(),
+        volume: volume,
+        bottleColor: '#4A5D4E',
+        image_url: document.getElementById('add-image').value.trim(),
+        notes: document.getElementById('add-notes').value.trim(),
+        price: document.getElementById('add-price').value.trim(),
+        memo: document.getElementById('add-memo').value.trim(),
+        order_num: 1
+      };
+
+      fragrances.unshift(newItem);
+      saveAndSyncCloud();
+      closeAddModal();
+
+      if (currentTab !== targetList) {
+        switchTab(targetList);
+      } else {
+        renderList();
+      }
+      showToast(`已新增「${newItem.name}」`);
+    }
+
+    /**
+     * 本機重設確認控制
+     */
+    function showResetConfirm() {
+      document.getElementById('reset-trigger-btn').classList.add('hidden');
+      document.getElementById('reset-final-actions').classList.remove('hidden');
+    }
+
+    function cancelResetConfirm() {
+      document.getElementById('reset-trigger-btn').classList.remove('hidden');
+      document.getElementById('reset-final-actions').classList.add('hidden');
+    }
+
+    function executeResetData() {
+      fragrances = normalizeItems(JSON.parse(JSON.stringify(DEFAULT_FRAGRANCES)));
+      saveAndSyncCloud();
+      closeCloudModal();
+      switchTab('owned');
+      setSubFilter('全部');
+      showToast('已還原為初始預載 37 項清單');
+    }
+
+    /**
+     * 輕量提示氣泡 (Toast)
+     */
+    let toastTimeout = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const msgEl = document.getElementById('toast-message');
+      msgEl.textContent = msg;
+
+      toast.classList.remove('opacity-0', 'translate-y-3');
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-3');
+      }, 2500);
+    }
+
+    /**
+     * HTML 字串跳脫
+     */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
