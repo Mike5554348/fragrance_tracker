@@ -354,6 +354,40 @@
       </div>
     </div>
 
+    <!-- 5.5 分類標籤管理抽屜 (Category Tag Management Modal) -->
+    <div id="category-modal" class="fixed inset-0 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
+      <div onclick="closeCategoryModal()" class="fixed inset-0 bg-charcoal/50 backdrop-blur-[2px]"></div>
+      <div class="relative w-full bg-paper rounded-t-3xl shadow-sheet max-h-[85vh] flex flex-col z-10">
+        <div class="w-full pt-3 pb-2 flex justify-center shrink-0" onclick="closeCategoryModal()">
+          <div class="w-10 h-1.5 rounded-full bg-sand"></div>
+        </div>
+        <div class="px-5 pb-3 border-b border-sand flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-2">
+            <i class="ph-fill ph-tag text-wood text-lg"></i>
+            <h2 class="font-serif text-lg font-bold text-charcoal">新增或編輯分類標籤</h2>
+          </div>
+          <button onclick="closeCategoryModal()" class="p-1.5 rounded-xl text-muted hover:text-charcoal">
+            <i class="ph ph-x text-xl"></i>
+          </button>
+        </div>
+
+        <div class="p-5 overflow-y-auto space-y-4 flex-1">
+          <!-- 新增分類表單 -->
+          <form onsubmit="handleAddCategory(event)" class="flex gap-2">
+            <input type="text" id="new-category-input" required placeholder="輸入新分類標籤，例如：身體髮香噴霧"
+              class="flex-1 min-w-0 bg-cream border border-sand rounded-xl px-3.5 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
+            <button type="submit"
+              class="px-4 py-2.5 rounded-xl bg-sage text-white text-xs font-semibold shadow-sm hover:bg-[#3E4F42] active:scale-95 transition-all shrink-0">
+              新增
+            </button>
+          </form>
+
+          <!-- 現有分類列表（可重新命名或移除） -->
+          <div id="category-manage-list" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- 6. Google 試算表雲端同步設定彈窗 (Cloud Sync Settings Modal) -->
     <div id="cloud-modal" class="fixed inset-0 z-50 hidden flex flex-col justify-end max-w-md mx-auto">
       <div onclick="closeCloudModal()" class="fixed inset-0 bg-charcoal/50 backdrop-blur-[2px]"></div>
