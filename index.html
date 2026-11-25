@@ -1970,13 +1970,11 @@ const DEFAULT_FRAGRANCES = [
               ? 'bg-woodPale text-wood'
               : 'bg-sand text-charcoal';
           badgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-medium shrink-0 ${badgeStyle}">${escapeHtml(item.sub_category)}</span>`;
-        } else if (formattedPrice) {
-          badgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-woodPale text-wood shrink-0">${escapeHtml(formattedPrice)}</span>`;
         }
 
         const priceAndUnitRow = (formattedPrice || unitPriceText)
           ? `<div class="flex flex-wrap items-center gap-1.5 mt-1">
-               ${formattedPrice ? `<span class="text-[11px] font-semibold text-charcoal">${escapeHtml(formattedPrice)}</span>` : ''}
+               ${formattedPrice ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-woodPale text-wood">${escapeHtml(formattedPrice)}</span>` : ''}
                ${unitPriceText ? `<span class="px-1.5 py-0.5 rounded bg-sagePale text-sage text-[10px] font-semibold">${escapeHtml(unitPriceText)}</span>` : ''}
              </div>`
           : '';
