@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>我的香氛誌 | 密碼保護與雲端雙向同步</title>
+  <title>我的香氛誌 | 雲端雙向同步與單價計算版</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- 載入 Google Fonts: Noto Serif TC 與 Inter / Noto Sans TC -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -117,16 +117,17 @@
           <!-- 雲端設定按鈕 -->
           <button onclick="openCloudModal()"
             class="p-2 rounded-xl text-charcoal bg-paper border border-sand active:scale-95 transition-all relative"
-            title="Google 試算表雲端同步與密碼設定">
+            title="Google 試算表雲端同步設定">
             <i class="ph ph-cloud-arrow-up text-lg text-sage"></i>
             <span id="cloud-dot" class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400"></span>
           </button>
 
-          <!-- 立即鎖定按鈕 -->
-          <button id="lock-now-btn" onclick="lockAppScreen()"
-            class="p-2 rounded-xl text-charcoal bg-paper border border-sand active:scale-95 transition-all"
-            title="立即鎖定畫面">
-            <i id="lock-now-icon" class="ph ph-lock-simple text-lg text-muted"></i>
+          <!-- 分類標籤管理按鈕 -->
+          <button onclick="openCategoryModal()"
+            class="px-2.5 py-2 rounded-xl text-xs font-medium flex items-center gap-1 transition-all border border-sand bg-paper text-charcoal active:scale-95"
+            title="新增或編輯分類標籤">
+            <i class="ph ph-tag text-sm text-wood"></i>
+            <span>分類</span>
           </button>
 
           <!-- 新增香氛 (+) 按鈕 -->
@@ -185,22 +186,7 @@
 
       <!-- 「已持有」子分類篩選膠囊列 -->
       <div id="subfilter-bar" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2.5 pb-0.5">
-        <button onclick="setSubFilter('全部')" data-sub="全部"
-          class="sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-charcoal text-white transition-all">
-          全部 (20)
-        </button>
-        <button onclick="setSubFilter('個人香水')" data-sub="個人香水"
-          class="sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-paper border border-sand text-muted hover:text-charcoal transition-all">
-          個人香水 (10)
-        </button>
-        <button onclick="setSubFilter('空間噴霧')" data-sub="空間噴霧"
-          class="sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-paper border border-sand text-muted hover:text-charcoal transition-all">
-          空間噴霧 (7)
-        </button>
-        <button onclick="setSubFilter('試管禮盒')" data-sub="試管禮盒"
-          class="sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-paper border border-sand text-muted hover:text-charcoal transition-all">
-          試管禮盒 (3)
-        </button>
+        <!-- 由 renderSubFilterBar() 動態生成 -->
       </div>
 
       <!-- 排序/管理模式提示條 -->
@@ -278,24 +264,24 @@
               </select>
             </div>
             <div id="add-sub-wrapper" class="hidden">
-              <label class="block text-xs font-medium text-muted mb-1">子分類</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-medium text-muted">分類標籤</label>
+                <button type="button" onclick="openCategoryModal()" class="text-[11px] font-semibold text-sage hover:underline">＋ 編輯標籤</button>
+              </div>
               <select id="add-sub"
                 class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage">
-                <option value="個人香水">個人香水</option>
-                <option value="空間噴霧">空間噴霧</option>
-                <option value="試管禮盒">試管禮盒</option>
               </select>
             </div>
             <div id="add-volume-wrapper">
-              <label class="block text-xs font-medium text-muted mb-1">容量規格</label>
-              <input type="text" id="add-volume" placeholder="例如：50ml / 100ml"
+              <label class="block text-xs font-medium text-muted mb-1">容量規格 (ml)</label>
+              <input type="text" id="add-volume" oninput="updateAddUnitPricePreview()" placeholder="例如：50ml / 100"
                 class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
             </div>
           </div>
 
           <div id="add-volume-row-owned" class="hidden">
-            <label class="block text-xs font-medium text-muted mb-1">容量規格</label>
-            <input type="text" id="add-volume-owned" placeholder="例如：50ml / 100ml"
+            <label class="block text-xs font-medium text-muted mb-1">容量規格 (ml)</label>
+            <input type="text" id="add-volume-owned" oninput="updateAddUnitPricePreview()" placeholder="例如：50ml / 100"
               class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
           </div>
 
@@ -306,9 +292,13 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-muted mb-1">香水品名 *</label>
-            <input type="text" id="add-name" required placeholder="例如：Formosa 小小多山的國家"
+            <label class="block text-xs font-medium text-muted mb-1">價格（僅填純數字，例如：3680）</label>
+            <input type="number" id="add-price" min="0" step="1" oninput="updateAddUnitPricePreview()" placeholder="例如：3680（資料庫存純數字，顯示為 NT$ 3,680）"
               class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
+            <div id="add-unit-preview" class="mt-1.5 px-3 py-1.5 rounded-xl bg-sagePale/80 text-sage text-xs font-medium flex items-center justify-between">
+              <span>顯示價格：<b id="add-price-formatted">—</b></span>
+              <span>每 ml 單價：<b id="add-unit-formatted">—</b></span>
+            </div>
           </div>
 
           <div>
@@ -320,12 +310,6 @@
           <div>
             <label class="block text-xs font-medium text-muted mb-1">香調與主要香材</label>
             <input type="text" id="add-notes" placeholder="例如：冷杉葉、四季春茶、肖楠木、檜木"
-              class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-muted mb-1">參考價格 / 單價</label>
-            <input type="text" id="add-price" placeholder="例如：NT$ 3,680（約 36.8 元/ml）"
               class="w-full bg-cream border border-sand rounded-xl px-3 py-2.5 text-sm text-charcoal focus:outline-none focus:border-sage" />
           </div>
 
@@ -379,8 +363,8 @@
         </div>
         <div class="px-5 pb-3 border-b border-sand flex items-center justify-between shrink-0">
           <div class="flex items-center gap-2">
-            <i class="ph-fill ph-shield-check text-sage text-lg"></i>
-            <h2 class="font-serif text-lg font-bold text-charcoal">雲端同步與密碼保護設定</h2>
+            <i class="ph-fill ph-cloud-check text-sage text-lg"></i>
+            <h2 class="font-serif text-lg font-bold text-charcoal">Google 試算表雲端同步設定</h2>
           </div>
           <button onclick="closeCloudModal()" class="p-1.5 rounded-xl text-muted hover:text-charcoal">
             <i class="ph ph-x text-xl"></i>
@@ -388,7 +372,7 @@
         </div>
 
         <div class="p-5 overflow-y-auto space-y-4 flex-1">
-          <!-- Web App URL 與專屬同步密碼設定區 -->
+          <!-- Web App URL 設定區 -->
           <div class="bg-cream rounded-2xl p-4 border border-sand space-y-3">
             <div>
               <label class="text-xs font-bold text-charcoal flex items-center gap-1.5 mb-1.5">
@@ -397,27 +381,8 @@
               </label>
               <input type="url" id="cloud-url-input" placeholder="https://script.google.com/macros/s/...../exec"
                 class="w-full bg-paper border border-sand rounded-xl px-3 py-2.5 text-xs text-charcoal focus:outline-none focus:border-sage" />
-            </div>
-
-            <div>
-              <div class="flex items-center justify-between mb-1.5">
-                <label class="text-xs font-bold text-charcoal flex items-center gap-1.5">
-                  <i class="ph-fill ph-key text-wood"></i>
-                  <span>專屬同步密碼 / Access Token</span>
-                </label>
-                <span id="pin-status-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-sand text-muted font-medium">未設定密碼鎖</span>
-              </div>
-              <div class="relative">
-                <input type="password" id="cloud-token-input" placeholder="設定通行密碼（需與 Apps Script 的 SECRET_TOKEN 一致）"
-                  class="w-full bg-paper border border-sand rounded-xl pl-3 pr-10 py-2.5 text-xs text-charcoal focus:outline-none focus:border-sage" />
-                <button type="button" onclick="togglePasswordVisibility('cloud-token-input', 'toggle-token-eye')"
-                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-charcoal p-1"
-                  title="顯示或隱藏密碼">
-                  <i id="toggle-token-eye" class="ph ph-eye text-base"></i>
-                </button>
-              </div>
               <p class="text-[11px] text-muted mt-1.5 leading-relaxed">
-                填寫後開啟網頁將啟用「解鎖畫面」；若未填寫密碼，則維持免密碼本機/雲端使用。
+                試算表 <code class="bg-sand/70 px-1 rounded">price</code> 欄位請填寫純數字（如 <code class="bg-sand/70 px-1 rounded">3680</code>），網頁會自動顯示為 <b>NT$ 3,680</b> 並計算每 ml 單價。
               </p>
             </div>
 
@@ -431,18 +396,6 @@
                 class="py-2.5 px-3 rounded-xl bg-wood text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
                 <i class="ph-bold ph-cloud-arrow-up text-sm"></i>
                 <span>將本機清單覆蓋寫入雲端</span>
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between pt-1.5 border-t border-sand/80">
-              <button type="button" onclick="lockAppScreenFromModal()"
-                class="text-xs font-semibold text-sage flex items-center gap-1 hover:underline">
-                <i class="ph-bold ph-lock-simple"></i>
-                <span>立即鎖定畫面</span>
-              </button>
-              <button type="button" onclick="clearSavedPinAndUnlock()"
-                class="text-xs font-medium text-red-600 hover:underline">
-                清除密碼並解除鎖定
               </button>
             </div>
           </div>
@@ -610,7 +563,7 @@ function doGet(e) {
     if (!row[0] && !row[4]) continue;
     const obj = {};
     headers.forEach((h, idx) => {
-      obj[h] = row[idx] !== undefined ? String(row[idx]) : '';
+      obj[h] = row[idx] !== undefined ? row[idx] : '';
     });
     obj.order_num = Number(obj.order_num) || i;
     items.push(obj);
@@ -619,34 +572,33 @@ function doGet(e) {
   return jsonResponse({ ok: true, status: 'ok', items: items });
 }
 
-// 寫入與同步資料 (POST { token, action: 'sync_all', items })
+// 寫入與同步資料 (POST { action: 'sync_all', items })
 function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     const payload = JSON.parse((e && e.postData && e.postData.contents) ? e.postData.contents : '{}');
-    if (!isAuthorized(payload.token)) {
-      return jsonResponse({ ok: false, status: 'error', error: 'Unauthorized' });
-    }
-
     const sheet = getOrCreateSheet();
 
     if (payload.action === 'sync_all' && Array.isArray(payload.items)) {
       sheet.clearContents();
       sheet.appendRow(HEADERS);
-      const rows = payload.items.map((item, idx) => [
-        item.id || ('item-' + Date.now() + '-' + idx),
-        item.list || 'owned',
-        item.sub_category || item.subCategory || '個人香水',
-        item.brand || '',
-        item.name || '',
-        item.volume || '',
-        item.notes || '',
-        item.price || '',
-        item.memo || '',
-        item.image_url || item.imageUrl || '',
-        idx + 1
-      ]);
+      const rows = payload.items.map((item, idx) => {
+        const numericPrice = Number(String(item.price ?? '').replace(/[^0-9.]/g, ''));
+        return [
+          item.id || ('item-' + Date.now() + '-' + idx),
+          item.list || 'owned',
+          item.sub_category || item.subCategory || '個人香水',
+          item.brand || '',
+          item.name || '',
+          item.volume || '',
+          item.notes || '',
+          numericPrice > 0 ? Math.round(numericPrice) : '',
+          item.memo || '',
+          item.image_url || item.imageUrl || '',
+          idx + 1
+        ];
+      });
       if (rows.length > 0) {
         sheet.getRange(2, 1, rows.length, HEADERS.length).setValues(rows);
       }
@@ -661,22 +613,22 @@ function doPost(e) {
   }
 }`;
 
-    /**
-     * 預設內建完整 37 項香氛資料 (20 已持有 + 2 待試香 + 15 待購買)
-     */
-    const DEFAULT_FRAGRANCES = [
-      // ================= 一、已持有 (owned - 20項) =================
+/**
+ * 預設內建香氛資料 (price 統一為純數字，顯示時自動格式化為 NT$ XX,XXX)
+ */
+const DEFAULT_FRAGRANCES = [
+      // ================= 一、已持有 (owned) =================
       {
         id: 'owned-1',
         list: 'owned',
         sub_category: '個人香水',
         brand: 'folks',
         name: '南投春水淡香水 (Nantou Spring Dew EDT)',
-        volume: '',
+        volume: '50ml',
         bottleColor: '#7A9A7E',
         image_url: 'https://www.folks.tw/cdn/shop/files/NantouSpringDew_1.jpg?v=1700000000',
         notes: '佛手柑、新鮮薄荷、綠茶、烏龍茶、岩蘭草、冷杉',
-        price: '',
+        price: 0,
         memo: '南投高山冷泡茶靈感，清透茶韻接續山林木質尾調。（小撇步：中後調含羊絨木與麝香，噴在衣物或搭配 SHIRO BON WOOD 疊香可避免體溫烘出暈香感）',
         order_num: 1
       },
@@ -690,7 +642,7 @@ function doPost(e) {
         bottleColor: '#8B3A3A',
         image_url: 'https://www.novigoparfums.com/cdn/shop/files/RedForest_50ml.jpg',
         notes: '乳香、鐵觀音、雪松、癒創木、皮革、紅茶、沉香、黑檀木',
-        price: '',
+        price: 0,
         memo: '深邃沉穩的東方森林木質調。',
         order_num: 2
       },
@@ -704,7 +656,7 @@ function doPost(e) {
         bottleColor: '#3E5663',
         image_url: '',
         notes: '卡拉布里亞佛手柑、橙花、綠橘、岩玫瑰、迷迭香、野百合、乳香、麝香、安息香、雪松',
-        price: '',
+        price: 0,
         memo: '海洋木質調，清新柑橘草本開場，銜接乳香與安息香、雪松尾韻。',
         order_num: 3
       },
@@ -718,7 +670,7 @@ function doPost(e) {
         bottleColor: '#A67B5B',
         image_url: '',
         notes: '焚香、薑、紫羅蘭、胡椒、聖樹、乳香、皮革、玫瑰、野百合、紙莎草、杉木、琥珀、檀香、安息香',
-        price: '',
+        price: 0,
         memo: '東方木質調，焚香、辛香與聖樹開場，後調轉為紙莎草、杉木與檀香的乾燥樹脂木質。',
         order_num: 4
       },
@@ -732,9 +684,9 @@ function doPost(e) {
         bottleColor: '#5D7359',
         image_url: 'https://www.essentialparfums.com/wp-content/uploads/2018/06/Mon-Vetiver-100ml-1.jpg',
         notes: '萊姆、琴酒、岩蘭草、薰衣草、龍膽',
-        price: '',
+        price: 0,
         memo: '清爽萊姆與琴酒氣息，乾淨迷人的木質香根草（調香師：Bruno Jovanovic）。適合與 SHIRO BON WOOD 疊香。',
-        order_num: 3
+        order_num: 5
       },
       {
         id: 'owned-4',
@@ -742,13 +694,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'NOSEWAY',
         name: '抹抹 (Mua Mua)',
-        volume: '',
+        volume: '100ml',
         bottleColor: '#6E8B6B',
         image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/66028f78223d2800178d7a64/800x.webp',
         notes: '海荷、南庄橙、蘭嶼酸橙、五月艾、左手香、月桃、沙薑',
-        price: '',
+        price: 0,
         memo: '台灣在地草本柑橘茶木香。單噴揮發較快，建議「抹抹 2 ： SHIRO BON WOOD 或樹下無事 1」噴於衣物定香。',
-        order_num: 4
+        order_num: 6
       },
       {
         id: 'owned-5',
@@ -760,9 +712,9 @@ function doPost(e) {
         bottleColor: '#2E5955',
         image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/64e5b27a1c193a0014d9460e/800x.webp',
         notes: '杉木、岩蘭草、綠意靜謐草本',
-        price: '',
+        price: 0,
         memo: '雨後山林般的純淨綠意與乾燥草木氣息，百搭的森林系日常香。',
-        order_num: 5
+        order_num: 7
       },
       {
         id: 'owned-6',
@@ -774,9 +726,9 @@ function doPost(e) {
         bottleColor: '#8E9B97',
         image_url: '',
         notes: '清冷木質、月光草原氣息',
-        price: '',
+        price: 0,
         memo: '靜謐柔和的月光森林感，適合睡前或與 Ran 857 薰衣草岩蘭草織品噴霧搭配。',
-        order_num: 6
+        order_num: 8
       },
       {
         id: 'owned-7',
@@ -784,13 +736,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'MEOW XIANG（繆香）',
         name: 'FLOATING INCENSE (WOODY M20)',
-        volume: '',
+        volume: '50ml',
         bottleColor: '#4A4643',
         image_url: '',
         notes: '焚香、沉穩木質',
-        price: '',
+        price: 0,
         memo: '沉生浮香，帶有靜心禪意與煙燻木質質感，適合獨處或冥想。',
-        order_num: 7
+        order_num: 9
       },
       {
         id: 'owned-8',
@@ -798,13 +750,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'MEOW XIANG（繆香）',
         name: 'FUTURE TRAVEL (WOODY M33)',
-        volume: '',
+        volume: '50ml',
         bottleColor: '#6D655F',
         image_url: '',
         notes: '乾淨俐落木質調',
-        price: '',
+        price: 0,
         memo: '乾淨俐落的木質氣息。',
-        order_num: 8
+        order_num: 10
       },
       {
         id: 'owned-9',
@@ -812,13 +764,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'J-Scent',
         name: '沈香 Agarwood',
-        volume: '',
+        volume: '50ml',
         bottleColor: '#5C4433',
         image_url: 'https://luz-store.com/cdn/shop/products/J-Scent_Agarwood_50ml.jpg',
         notes: '沉香、木質、東方香道樹脂',
-        price: '',
+        price: 0,
         memo: '溫潤厚實、帶有日式傳統香道氛圍的沉香木質調。',
-        order_num: 9
+        order_num: 11
       },
       {
         id: 'owned-10',
@@ -830,9 +782,9 @@ function doPost(e) {
         bottleColor: '#B59B4C',
         image_url: 'https://shiro-shiro.jp/cdn/shop/files/12438_01.jpg',
         notes: '香檸檬、柑橘、辛香、茉莉、廣藿香、雪松、琥珀、香草',
-        price: '',
+        price: 0,
         memo: '收藏中的萬用定香神隊友！乾淨俐落的乾燥原木氣息，與我的香根草疊香可還原 Aesop 艾底希思的神韻。',
-        order_num: 10
+        order_num: 12
       },
       {
         id: 'owned-11',
@@ -844,9 +796,9 @@ function doPost(e) {
         bottleColor: '#9C8D74',
         image_url: 'https://www.muji.tw/images/product/4550583938451_400.jpg',
         notes: '台灣烏龍茶、清新茶韻',
-        price: '',
+        price: 0,
         memo: '無糖純粹的高山烏龍茶香，噴在衣物上可中和木質或甜感香水的厚重度。',
-        order_num: 11
+        order_num: 13
       },
       {
         id: 'owned-12',
@@ -858,9 +810,9 @@ function doPost(e) {
         bottleColor: '#697F76',
         image_url: '',
         notes: '雨後森林、水潤高山草本精油',
-        price: '',
+        price: 0,
         memo: '充滿水潤空氣感與霧氣山林的精油空間噴霧，極適合用來稀釋悶熱後調。',
-        order_num: 12
+        order_num: 14
       },
       {
         id: 'owned-13',
@@ -872,9 +824,9 @@ function doPost(e) {
         bottleColor: '#3E5E54',
         image_url: '',
         notes: '冷冽松針、北國針葉林精油',
-        price: '',
+        price: 0,
         memo: '清涼挺拔的北國針葉林氣息，睡前噴灑營造深夜森林氛圍。',
-        order_num: 13
+        order_num: 15
       },
       {
         id: 'owned-14',
@@ -882,13 +834,13 @@ function doPost(e) {
         sub_category: '空間噴霧',
         brand: 'Ran',
         name: '815 ROOM SPRAY PINE & ROSEMARY（松木迷迭香空間噴霧）',
-        volume: '',
+        volume: '100ml',
         bottleColor: '#4F6D58',
         image_url: '',
         notes: '松木、迷迭香、草本木質',
-        price: '',
+        price: 0,
         memo: '提神醒腦的草本松木空間噴霧。',
-        order_num: 14
+        order_num: 16
       },
       {
         id: 'owned-15',
@@ -896,13 +848,13 @@ function doPost(e) {
         sub_category: '空間噴霧',
         brand: 'Ran',
         name: '816 ROOM SPRAY SENCHA（煎茶空間噴霧）',
-        volume: '',
+        volume: '100ml',
         bottleColor: '#778A68',
         image_url: '',
         notes: '日式煎茶、清爽綠茶',
-        price: '',
+        price: 0,
         memo: '帶有微苦回甘單寧感的日式煎茶，可作為疊香降甜利器。',
-        order_num: 15
+        order_num: 17
       },
       {
         id: 'owned-16',
@@ -910,13 +862,13 @@ function doPost(e) {
         sub_category: '空間噴霧',
         brand: 'Ran',
         name: '857 FABRIC SPRAY LAVENDER & VETIVER（薰衣草岩蘭草織品噴霧）',
-        volume: '',
+        volume: '100ml',
         bottleColor: '#7B7485',
         image_url: '',
         notes: '薰衣草、岩蘭草、舒眠草本',
-        price: '',
+        price: 0,
         memo: '噴在枕頭與床單上的絕佳舒眠草本木質噴霧。',
-        order_num: 16
+        order_num: 18
       },
       {
         id: 'owned-17',
@@ -928,9 +880,9 @@ function doPost(e) {
         bottleColor: '#4A5D4E',
         image_url: '',
         notes: '隨身空間/織品香氛噴霧',
-        price: '',
+        price: 0,
         memo: '方便隨身攜帶轉換空間氛圍的噴霧。',
-        order_num: 17
+        order_num: 19
       },
       {
         id: 'owned-18',
@@ -938,13 +890,13 @@ function doPost(e) {
         sub_category: '試管禮盒',
         brand: 'BVLGARI 寶格麗',
         name: 'Man Rain Essence Eau de Parfum（當代男性雨露淡香精）',
-        volume: '禮盒組',
+        volume: '15ml',
         bottleColor: '#7C9399',
         image_url: 'https://www.bulgari.com/dw/image/v2/BCSG_PRD/on/demandware.static/-/Sites-masterCatalog/default/dw4c8d1b1c/images/large/41821_001.png',
         notes: '綠茶、白蓮花、麝香、癒創木',
-        price: '',
+        price: 0,
         memo: 'MAN COLLECTION DISCOVERY SET 禮盒。乾淨透明的水生綠茶木質調，三款中最清爽實穿。',
-        order_num: 18
+        order_num: 20
       },
       {
         id: 'owned-19',
@@ -952,13 +904,13 @@ function doPost(e) {
         sub_category: '試管禮盒',
         brand: 'BVLGARI 寶格麗',
         name: 'Man In Black Eau de Parfum（當代男性黑茶淡香精）',
-        volume: '禮盒組',
+        volume: '15ml',
         bottleColor: '#2B2927',
         image_url: 'https://www.bulgari.com/dw/image/v2/BCSG_PRD/on/demandware.static/-/Sites-masterCatalog/default/dw7e9f2a3b/images/large/41240_001.png',
         notes: '蘭姆酒、香料、皮革、晚香玉、癒創木',
-        price: '',
+        price: 0,
         memo: 'MAN COLLECTION DISCOVERY SET 禮盒。單穿整體偏甜濃，建議按半下並搭配「MUJI 台灣烏龍茶」或「SHIRO BON WOOD」疊香切斷甜膩感。',
-        order_num: 19
+        order_num: 21
       },
       {
         id: 'owned-20',
@@ -966,16 +918,16 @@ function doPost(e) {
         sub_category: '試管禮盒',
         brand: 'BVLGARI 寶格麗',
         name: 'Man Wood Essence Eau de Parfum（當代男性木益淡香精）',
-        volume: '禮盒組',
+        volume: '15ml',
         bottleColor: '#5B6B4D',
         image_url: 'https://www.bulgari.com/dw/image/v2/BCSG_PRD/on/demandware.static/-/Sites-masterCatalog/default/dw9a1b3c5d/images/large/41485_001.png',
         notes: '柑橘皮、芫荽、絲柏、香根草、雪松',
-        price: '',
+        price: 0,
         memo: 'MAN COLLECTION DISCOVERY SET 禮盒。後調龍涎香容易引起暈香，建議搭配「voyager 山雨雲霧」或「NOSEWAY 樹下無事」拉開呼吸感。',
-        order_num: 20
+        order_num: 22
       },
 
-      // ================= 二、待試香 (try - 2項) =================
+      // ================= 二、待試香 (try) =================
       {
         id: 'try-1',
         list: 'try',
@@ -986,9 +938,9 @@ function doPost(e) {
         bottleColor: '#232323',
         image_url: 'https://www.lalique.com/sites/default/files/styles/product_zoom/public/2021-05/E10101_0.jpg',
         notes: '絲柏、波旁與海地雙重岩蘭草、羊絨木、麝香',
-        price: '約 NT$ 1,050～1,399（約 10.5～14 元/ml）',
-        memo: '試香管道：分裝試香賣場（1~2ml 約 NT$ 50~80）或百貨香水複合櫃。岩蘭草控高 CP 值經典！注意香調表含有微量羊絨木與麝香，試香時需留意中後調是否會引發暈香。',
-        order_num: 21
+        price: 1200,
+        memo: '電商約 NT$ 1,050～1,399；試香管道：分裝試香賣場（1~2ml 約 NT$ 50~80）或百貨香水複合櫃。岩蘭草控高 CP 值經典！注意香調表含有微量羊絨木與麝香，試香時需留意中後調是否會引發暈香。',
+        order_num: 23
       },
       {
         id: 'try-2',
@@ -1000,9 +952,9 @@ function doPost(e) {
         bottleColor: '#8C6239',
         image_url: 'https://www.isseymiyakeparfums.com/dw/image/v2/BDGH_PRD/on/demandware.static/-/Sites-itemmaster_isseymiyake/default/dw2b3c4d5e/images/large/71012345_01.jpg',
         notes: '雙倍濃度雪松與檀香、葡萄柚、小荳蔻',
-        price: '電商平輸約 NT$ 1,800～2,480（約 18～24.8 元/ml）',
-        memo: '試香管道：全台百貨 ISSEY MIYAKE 專櫃或大型美妝香水複合店。雙倍雪松與檀香核心，純粹乾燥原木風格，單價在 25 元/ml 以內的高質感日常木質選擇。',
-        order_num: 22
+        price: 2100,
+        memo: '電商平輸約 NT$ 1,800～2,480；試香管道：全台百貨 ISSEY MIYAKE 專櫃或大型美妝香水複合店。雙倍雪松與檀香核心，純粹乾燥原木風格。',
+        order_num: 24
       },
       {
         id: 'try-3',
@@ -1014,12 +966,12 @@ function doPost(e) {
         bottleColor: '#4E6B57',
         image_url: '',
         notes: '冷杉葉、四季春茶葉、黑松木、肖楠木、檜木',
-        price: 'NT$ 3,680（約 36.8 元/ml；活動價約 NT$ 2,680）',
-        memo: '融合清透台灣茶香與冷冽針葉／肖楠檜木森林；試香管道：全台 NOSEWAY 迷香人專櫃。',
-        order_num: 23
+        price: 3680,
+        memo: '活動價約 NT$ 2,680；融合清透台灣茶香與冷冽針葉／肖楠檜木森林；試香管道：全台 NOSEWAY 迷香人專櫃。',
+        order_num: 25
       },
 
-      // ================= 三、待購買 (buy - 15項) =================
+      // ================= 三、待購買 (buy) =================
       {
         id: 'buy-1',
         list: 'buy',
@@ -1030,9 +982,9 @@ function doPost(e) {
         bottleColor: '#4A5D4E',
         image_url: 'https://www.saltandstone.com/cdn/shop/files/BodyMist_BergamotHinoki_100ml.jpg',
         notes: '義大利佛手柑、葡萄柚、檜木、岩蘭草、尤加利、琥珀',
-        price: '約 NT$ 1,026～1,560（約 10～15.6 元/ml）',
-        memo: '高 CP 值日常無痛首選，大容量適合日常噴灑身體與頭髮，也適合作為木質調定香基底。',
-        order_num: 23
+        price: 1560,
+        memo: '通路約 NT$ 1,026～1,560；高 CP 值日常無痛首選，大容量適合日常噴灑身體與頭髮，也適合作為木質調定香基底。',
+        order_num: 26
       },
       {
         id: 'buy-2',
@@ -1044,9 +996,9 @@ function doPost(e) {
         bottleColor: '#6E8562',
         image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/651234567890abcdef111222/800x.webp',
         notes: '春芽烏龍、天竺葵、金萱茶葉、玉露茶、岩蘭草、檀木、香杉',
-        price: '約 NT$ 3,080～3,680（約 30.8～36.8 元/ml）',
-        memo: '中價位主力考慮。高山茶葉的回甘清香結合檀木與香杉，完美契合茶木香喜好。',
-        order_num: 24
+        price: 3680,
+        memo: '通路約 NT$ 3,080～3,680；中價位主力考慮。高山茶葉的回甘清香結合檀木與香杉，完美契合茶木香喜好。',
+        order_num: 27
       },
       {
         id: 'buy-3',
@@ -1054,13 +1006,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'TERRA．T（NOSEWAY）',
         name: "凝山 (Ici, le pas s'arrête)",
-        volume: '100ml 香精',
+        volume: '100ml',
         bottleColor: '#4B5748',
         image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/652234567890abcdef333444/800x.webp',
         notes: '醒目薰衣草、快樂鼠尾草、台灣肖楠、雪茄、絲柏、檀香、樺木',
-        price: 'NT$ 4,980（49.8 元/ml）',
+        price: 4980,
         memo: '中價位主力考慮。高濃度 Extrait 香精，以台灣肖楠與檀香勾勒沉穩守護的山林氣息，建議等百貨檔期或優惠入手。',
-        order_num: 25
+        order_num: 28
       },
       {
         id: 'buy-4',
@@ -1068,13 +1020,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'TERRA．T（NOSEWAY）',
         name: '拂山 (La montagne effleure)',
-        volume: '100ml 香精',
+        volume: '100ml',
         bottleColor: '#687D70',
         image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/653234567890abcdef555666/800x.webp',
         notes: '山林木質、清新草本針葉氣息',
-        price: 'NT$ 4,980（49.8 元/ml）',
+        price: 4980,
         memo: '中價位主力考慮。與《凝山》並列山林對香，呈現山風輕拂林梢的流動空氣感。',
-        order_num: 26
+        order_num: 29
       },
       {
         id: 'buy-5',
@@ -1082,13 +1034,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'TERRA．T（NOSEWAY）',
         name: '臥山',
-        volume: '100ml 香精',
+        volume: '100ml',
         bottleColor: '#5B6350',
         image_url: 'https://shoplineimg.com/5c49767a2a117c0001e3b4b5/654234567890abcdef777888/800x.webp',
         notes: '台灣山林木質、沉靜大地苔蘚與草木底蘊',
-        price: 'NT$ 4,980（49.8 元/ml）',
+        price: 4980,
         memo: '與《凝山》、《拂山》同屬 TERRA．T 山林系列作品，延續台灣原生林木與靜謐山野氣息。',
-        order_num: 27
+        order_num: 30
       },
       {
         id: 'buy-6',
@@ -1100,9 +1052,9 @@ function doPost(e) {
         bottleColor: '#5B8A72',
         image_url: 'https://www.milleretbertaux.com/wp-content/uploads/2020/05/Menta-y-Menta-100ml.jpg',
         notes: '摩洛哥薄荷、茶葉、檸檬、烘焙咖啡與木質',
-        price: '約 NT$ 4,200～4,680（約 42～46.8 元/ml）',
-        memo: '摩洛哥薄荷、茶葉與檸檬帶出的清涼草本茶香，與偏好的清透茶韻與草本調相當契合。',
-        order_num: 28
+        price: 4400,
+        memo: '約 NT$ 4,200～4,680；摩洛哥薄荷、茶葉與檸檬帶出的清涼草本茶香，與偏好的清透茶韻與草本調相當契合。',
+        order_num: 31
       },
       {
         id: 'buy-7',
@@ -1114,9 +1066,9 @@ function doPost(e) {
         bottleColor: '#4E5D48',
         image_url: 'https://www.malinandgoetz.com/media/catalog/product/c/a/cannabis_edp_50ml_1.jpg',
         notes: '佛手柑、黑胡椒、大麻草本白花、雪松、檀香、廣藿香',
-        price: '通路特價約 NT$ 2,741 起（約 54.8 元/ml；專櫃約 NT$ 3,500～3,600）',
-        memo: '後調神似 Aesop 艾底希思，等手邊香水消耗或遇到 2,700 元左右好價可入手。',
-        order_num: 29
+        price: 2741,
+        memo: '專櫃定價約 NT$ 3,500～3,600；後調神似 Aesop 艾底希思，等手邊香水消耗或遇到 2,700 元左右好價可入手。',
+        order_num: 32
       },
       {
         id: 'buy-8',
@@ -1128,9 +1080,9 @@ function doPost(e) {
         bottleColor: '#5D473A',
         image_url: 'https://www.aesop.com/medias/Aesop-Fragrance-Hwyl-Eau-de-Parfum-50mL-Large-886x1100px.png',
         notes: '柏樹（羅漢柏）、乳香、岩蘭草、苔蘚、百里香',
-        price: '電商航空版約 NT$ 3,580～4,200（約 71.6～84 元/ml；專櫃 NT$ 6,200）',
-        memo: '高單價名單，走進日本古老檜木森林的煙燻靜謐感，慢慢等免稅或 3,600 元左右好價。',
-        order_num: 30
+        price: 3800,
+        memo: '電商航空版約 NT$ 3,580～4,200（專櫃 NT$ 6,200）；走進日本古老檜木森林的煙燻靜謐感，慢慢等免稅或 3,600 元左右好價。',
+        order_num: 33
       },
       {
         id: 'buy-9',
@@ -1142,9 +1094,9 @@ function doPost(e) {
         bottleColor: '#8C7A5B',
         image_url: 'https://liquidesimaginaires.com/cdn/shop/files/MORNING-STAR-100ML.jpg',
         notes: '佛手柑、粉紅胡椒、肉桂、焚香、鈴蘭、茉莉、雪松、廣藿香、岩蘭草',
-        price: '約 NT$ 9,396～10,451（約 94～104.5 元/ml）',
-        memo: '以微涼焚香銜接雪松與岩蘭草木質，高單價觀察名單（台灣代理 NOSEWAY 有引進）。',
-        order_num: 31
+        price: 9800,
+        memo: '約 NT$ 9,396～10,451；以微涼焚香銜接雪松與岩蘭草木質，高單價觀察名單（台灣代理 NOSEWAY 有引進）。',
+        order_num: 34
       },
       {
         id: 'buy-10',
@@ -1152,13 +1104,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'Perfumer H',
         name: 'Rain Wood（雨木）',
-        volume: '50ml / 100ml',
+        volume: '50ml',
         bottleColor: '#566A68',
         image_url: 'https://www.perfumerh.com/cdn/shop/files/RainWood_50ml.jpg',
         notes: '白松香、欖香脂、水汽、雪松、杜松、沒藥',
-        price: '50ml 約 NT$ 5,600～6,200（約 112～124 元/ml）',
-        memo: '白松香、欖香脂、水汽與雪松、杜松交織的潮濕雨後森林木質調，與山雨、松針氛圍高度呼應。',
-        order_num: 32
+        price: 5900,
+        memo: '50ml 約 NT$ 5,600～6,200；白松香、欖香脂、水汽與雪松、杜松交織的潮濕雨後森林木質調，與山雨、松針氛圍高度呼應。',
+        order_num: 35
       },
       {
         id: 'buy-11',
@@ -1170,9 +1122,9 @@ function doPost(e) {
         bottleColor: '#697A64',
         image_url: 'https://www.yuyu-perfume.com/cdn/shop/files/MistyForest_10ml.jpg',
         notes: '青草、杜松、蘭花、紫藤花、黑檀木、台灣黃檜、橡樹苔',
-        price: 'NT$ 1,000（約 100 元/ml）',
+        price: 1000,
         memo: '小容量高單價（100元/ml），順路試香或湊活動再考慮。',
-        order_num: 33
+        order_num: 36
       },
       {
         id: 'buy-12',
@@ -1180,13 +1132,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'Le Labo',
         name: '桉樹 20 (Eucalyptus 20)',
-        volume: '50ml / 15ml',
+        volume: '50ml',
         bottleColor: '#5A6158',
         image_url: 'https://www.lelabofragrances.com/media/catalog/product/e/u/eucalyptus_20_50ml.jpg',
         notes: '尤加利葉、紅百里香、雪松木、乳香、岩薔薇、麝香',
-        price: '50ml 專櫃約 NT$ 7,580～7,800（約 151.6～156 元/ml；免稅代購約 NT$ 4,350）',
-        memo: '療癒遼闊的曠野木質氛圍，單價極高，建議等出國免稅或收 15ml 小容量。',
-        order_num: 34
+        price: 7580,
+        memo: '50ml 專櫃約 NT$ 7,580～7,800（免稅代購約 NT$ 4,350）；療癒遼闊的曠野木質氛圍，建議等出國免稅或收 15ml 小容量。',
+        order_num: 37
       },
       {
         id: 'buy-13',
@@ -1194,13 +1146,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'MATIERE PREMIERE',
         name: '香櫞古龍淡香精 (Cologne Cédrat)',
-        volume: '50ml / 100ml',
+        volume: '100ml',
         bottleColor: '#B59B42',
         image_url: 'https://matiere-premiere.com/wp-content/uploads/2019/09/Cologne-Cedrat-100ml.jpg',
         notes: '卡拉布里亞香櫞精油、黑胡椒、粉紅胡椒、佛手柑、巴拉圭瑪黛茶',
-        price: '台灣 10/10 售價約 NT$ 6,200 起（100ml NT$ 8,600，約 86 元/ml）',
-        memo: '明亮柑橘胡椒搭配瑪黛茶尾韻，可先考慮 6ml 隨身瓶解饞。',
-        order_num: 35
+        price: 8600,
+        memo: '台灣 10/10 售價 100ml NT$ 8,600（50ml 約 NT$ 6,200 起）；明亮柑橘胡椒搭配瑪黛茶尾韻，可先考慮 6ml 隨身瓶解饞。',
+        order_num: 38
       },
       {
         id: 'buy-14',
@@ -1208,13 +1160,13 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'MATIERE PREMIERE',
         name: "黑木之森淡香精 (Bois d'Ébène)",
-        volume: '100ml / 6ml',
+        volume: '100ml',
         bottleColor: '#3B322C',
         image_url: 'https://matiere-premiere.com/wp-content/uploads/2019/09/Bois-dEbene-100ml.jpg',
         notes: '杜松子、癒創木、廣藿香、深邃暗色木質',
-        price: '台灣 10/10 100ml NT$ 8,600（約 86 元/ml；6ml NT$ 1,500）',
-        memo: '沉穩深邃的暗色木質調，10/10 有推出 6ml 小容量可入手。',
-        order_num: 36
+        price: 8600,
+        memo: '台灣 10/10 100ml NT$ 8,600（6ml NT$ 1,500）；沉穩深邃的暗色木質調，10/10 有推出 6ml 小容量可入手。',
+        order_num: 39
       },
       {
         id: 'buy-15',
@@ -1222,31 +1174,129 @@ function doPost(e) {
         sub_category: '個人香水',
         brand: 'MATIERE PREMIERE',
         name: '一葉傾橙淡香精 (Neroli Oranger)',
-        volume: '50ml / 100ml',
+        volume: '100ml',
         bottleColor: '#C28B4E',
         image_url: 'https://matiere-premiere.com/wp-content/uploads/2019/09/Neroli-Oranger-100ml.jpg',
         notes: '佛手柑、苦橙葉、突尼西亞橙花、依蘭、麝香',
-        price: '台灣 10/10 售價約 NT$ 6,200 起（100ml NT$ 8,600，約 86 元/ml）',
-        memo: '清透微苦橙葉與陽光橙花氣息，高單價觀察名單。',
-        order_num: 37
+        price: 8600,
+        memo: '台灣 10/10 售價 100ml NT$ 8,600（50ml 約 NT$ 6,200 起）；清透微苦橙葉與陽光橙花氣息，高單價觀察名單。',
+        order_num: 40
       }
     ];
 
-    const STORAGE_KEY_DATA = 'fragrance_journal_cloud_v1';
+    const DEFAULT_CATEGORIES = ['個人香水', '空間噴霧', '試管禮盒'];
+
+    const STORAGE_KEY_DATA = 'fragrance_journal_cloud_v2';
     const STORAGE_KEY_API = 'fragrance_gas_webapp_url';
-    const STORAGE_KEY_TOKEN = 'fragrance_access_token';
-    const STORAGE_KEY_UNLOCKED = 'fragrance_session_unlocked';
+    const STORAGE_KEY_CATS = 'fragrance_custom_categories_v1';
 
     // 應用程式狀態
     let fragrances = [];
+    let categories = [];
     let currentTab = 'owned';       // 'owned' | 'try' | 'buy'
-    let currentSubFilter = '全部';  // '全部' | '個人香水' | '空間噴霧' | '試管禮盒'
+    let currentSubFilter = '全部';  // '全部' | 自訂分類標籤
     let searchQuery = '';
     let isSortMode = false;
     let activeDetailId = null;
     let isEditMode = false;
     let pendingDeleteId = null;
-    let isScreenLocked = false;
+
+    /**
+     * 解析純數字價格（支援從舊字串提取首個數值，存入時統一為純數字）
+     */
+    function parseNumericPrice(rawPrice) {
+      if (rawPrice === null || rawPrice === undefined || rawPrice === '') return 0;
+      if (typeof rawPrice === 'number') return Number.isFinite(rawPrice) && rawPrice > 0 ? Math.round(rawPrice) : 0;
+      const str = String(rawPrice).replace(/,/g, '');
+      const match = str.match(/(\d+(?:\.\d+)?)/);
+      if (!match) return 0;
+      const num = Math.round(Number(match[1]));
+      return Number.isFinite(num) && num > 0 ? num : 0;
+    }
+
+    /**
+     * 將純數字價格格式化為「NT$ XX,XXX」
+     */
+    function formatPriceDisplay(rawPrice) {
+      const num = parseNumericPrice(rawPrice);
+      if (!num || num <= 0) return '';
+      return `NT$ ${num.toLocaleString('en-US')}`;
+    }
+
+    /**
+     * 從容量字串（如 "50ml"、"100"、"10ml"）萃取 ml 數值
+     */
+    function parseVolumeMl(rawVolume) {
+      if (rawVolume === null || rawVolume === undefined || rawVolume === '') return 0;
+      if (typeof rawVolume === 'number') return Number.isFinite(rawVolume) && rawVolume > 0 ? rawVolume : 0;
+      const str = String(rawVolume).trim();
+      const match = str.match(/(\d+(?:\.\d+)?)\s*(?:ml|ML|mL|g|G)?/);
+      if (!match) return 0;
+      const num = Number(match[1]);
+      return Number.isFinite(num) && num > 0 ? num : 0;
+    }
+
+    /**
+     * 依據價格與 ml 數計算每 ml 單價
+     */
+    function calcUnitPriceValue(rawPrice, rawVolume) {
+      const priceNum = parseNumericPrice(rawPrice);
+      const volMl = parseVolumeMl(rawVolume);
+      if (!priceNum || priceNum <= 0 || !volMl || volMl <= 0) return null;
+      return priceNum / volMl;
+    }
+
+    /**
+     * 格式化每 ml 單價顯示字串（例如：NT$ 36.8 / ml 或 NT$ 100 / ml）
+     */
+    function formatUnitPriceDisplay(rawPrice, rawVolume) {
+      const unit = calcUnitPriceValue(rawPrice, rawVolume);
+      if (unit === null) return '';
+      const rounded = Number(unit.toFixed(1));
+      const formattedNum = Number.isInteger(rounded)
+        ? Math.round(rounded).toLocaleString('en-US')
+        : rounded.toLocaleString('en-US');
+      return `NT$ ${formattedNum} / ml`;
+    }
+
+    /**
+     * 載入與儲存自訂分類標籤
+     */
+    function loadCategories() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_CATS);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            categories = parsed.map(c => String(c).trim()).filter(Boolean);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('讀取分類標籤失敗:', e);
+      }
+      categories = [...DEFAULT_CATEGORIES];
+      saveCategories();
+    }
+
+    function saveCategories() {
+      try {
+        localStorage.setItem(STORAGE_KEY_CATS, JSON.stringify(categories));
+      } catch (e) {
+        console.error('儲存分類標籤失敗:', e);
+      }
+    }
+
+    function syncCategoriesFromItems() {
+      let changed = false;
+      fragrances.forEach(item => {
+        if (item.sub_category && !categories.includes(item.sub_category)) {
+          categories.push(item.sub_category);
+          changed = true;
+        }
+      });
+      if (changed) saveCategories();
+    }
 
     /**
      * 將本機快取或 Google 試算表回傳的香氛資料正規化為統一結構
@@ -1265,11 +1315,12 @@ function doPost(e) {
           const subCatRaw = raw.sub_category ?? raw.subCategory ?? '';
           const normalizedSub = subCatRaw
             ? String(subCatRaw).trim()
-            : (normalizedList === 'owned' ? '個人香水' : '個人香水');
+            : (categories[0] || '個人香水');
 
           const id = raw.id ? String(raw.id).trim() : `item-${Date.now()}-${idx}`;
           const parsedOrder = Number(raw.order_num ?? raw.orderNum);
           const orderNum = Number.isFinite(parsedOrder) && parsedOrder > 0 ? parsedOrder : idx + 1;
+          const numericPrice = parseNumericPrice(raw.price);
 
           return {
             id,
@@ -1281,7 +1332,7 @@ function doPost(e) {
             bottleColor: raw.bottleColor || defaultColorMap.get(id) || '#4A5D4E',
             image_url: raw.image_url ?? raw.imageUrl ?? '',
             notes: raw.notes ? String(raw.notes).trim() : '',
-            price: raw.price ? String(raw.price).trim() : '',
+            price: numericPrice,
             memo: raw.memo ? String(raw.memo).trim() : '',
             order_num: orderNum
           };
@@ -1296,8 +1347,11 @@ function doPost(e) {
       try {
         fragrances.forEach((item, idx) => {
           item.order_num = idx + 1;
+          item.price = parseNumericPrice(item.price);
         });
         localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(fragrances));
+        syncCategoriesFromItems();
+        renderSubFilterBar();
         updateCounts();
       } catch (e) {
         console.error('儲存本機資料失敗:', e);
@@ -1305,198 +1359,10 @@ function doPost(e) {
     }
 
     /**
-     * 取得設定的 Apps Script Web App URL 與 Access Token
+     * 取得設定的 Apps Script Web App URL
      */
     function getApiUrl() {
       return (localStorage.getItem(STORAGE_KEY_API) || '').trim();
-    }
-
-    function getAccessToken() {
-      return (localStorage.getItem(STORAGE_KEY_TOKEN) || '').trim();
-    }
-
-    function hasConfiguredToken() {
-      return getAccessToken().length > 0;
-    }
-
-    function isSessionUnlocked() {
-      if (!hasConfiguredToken()) return true;
-      return sessionStorage.getItem(STORAGE_KEY_UNLOCKED) === 'true';
-    }
-
-    function setSessionUnlocked(unlocked) {
-      if (unlocked) {
-        sessionStorage.setItem(STORAGE_KEY_UNLOCKED, 'true');
-      } else {
-        sessionStorage.removeItem(STORAGE_KEY_UNLOCKED);
-      }
-    }
-
-    /**
-     * 更新密碼鎖狀態徽章與鎖定按鈕樣式
-     */
-    function updateLockUI() {
-      const configured = hasConfiguredToken();
-      const badge = document.getElementById('pin-status-badge');
-      const lockIcon = document.getElementById('lock-now-icon');
-      const lockBtn = document.getElementById('lock-now-btn');
-
-      if (badge) {
-        if (configured) {
-          badge.textContent = '已啟用密碼鎖';
-          badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-sagePale text-sage font-semibold';
-        } else {
-          badge.textContent = '未設定密碼鎖';
-          badge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-sand text-muted font-medium';
-        }
-      }
-
-      if (lockIcon && lockBtn) {
-        if (configured) {
-          lockIcon.className = 'ph-fill ph-lock-simple text-lg text-sage';
-          lockBtn.title = '立即鎖定畫面';
-        } else {
-          lockIcon.className = 'ph ph-lock-open text-lg text-muted';
-          lockBtn.title = '尚未設定密碼（點擊前往設定）';
-        }
-      }
-    }
-
-    /**
-     * 顯示或隱藏解鎖畫面
-     */
-    function showLockScreen(customError = '') {
-      isScreenLocked = true;
-      const lockScreen = document.getElementById('lock-screen');
-      const pinInput = document.getElementById('unlock-pin-input');
-      const errorEl = document.getElementById('unlock-error-msg');
-      const hintEl = document.getElementById('lock-screen-hint');
-
-      hideResetPinConfirm();
-      pinInput.value = '';
-      pinInput.type = 'password';
-      document.getElementById('unlock-eye-icon').className = 'ph ph-eye text-lg';
-
-      if (customError) {
-        errorEl.textContent = customError;
-        errorEl.classList.remove('hidden');
-      } else {
-        errorEl.classList.add('hidden');
-      }
-
-      if (hintEl) {
-        hintEl.textContent = getApiUrl()
-          ? '請輸入您的專屬通行密碼以解鎖清單並同步 Google 試算表。'
-          : '請輸入您的專屬通行密碼以解鎖本機香氛誌。';
-      }
-
-      lockScreen.classList.remove('hidden');
-      setTimeout(() => pinInput.focus(), 80);
-    }
-
-    function hideLockScreen() {
-      isScreenLocked = false;
-      document.getElementById('lock-screen').classList.add('hidden');
-      document.getElementById('unlock-error-msg').classList.add('hidden');
-      hideResetPinConfirm();
-    }
-
-    /**
-     * 處理使用者輸入密碼解鎖
-     */
-    function handleUnlockSubmit(e) {
-      e.preventDefault();
-      const entered = document.getElementById('unlock-pin-input').value.trim();
-      const storedToken = getAccessToken();
-
-      if (!storedToken) {
-        setSessionUnlocked(true);
-        hideLockScreen();
-        return;
-      }
-
-      if (entered === storedToken) {
-        setSessionUnlocked(true);
-        hideLockScreen();
-        updateLockUI();
-        showToast('已解鎖香氛誌');
-        if (getApiUrl()) {
-          syncFromCloud(false);
-        }
-      } else {
-        const errorEl = document.getElementById('unlock-error-msg');
-        errorEl.textContent = '密碼不正確，請重新輸入（或點選下方重設密碼／登出鎖定）。';
-        errorEl.classList.remove('hidden');
-        document.getElementById('unlock-pin-input').select();
-      }
-    }
-
-    /**
-     * 立即鎖定畫面（工具列按鈕）
-     */
-    function lockAppScreen() {
-      if (!hasConfiguredToken()) {
-        openCloudModal();
-        showToast('請先在設定中輸入「專屬同步密碼」再啟用鎖定');
-        return;
-      }
-      setSessionUnlocked(false);
-      showLockScreen();
-    }
-
-    function lockAppScreenFromModal() {
-      if (!hasConfiguredToken()) {
-        showToast('請先輸入密碼並儲存後再鎖定');
-        return;
-      }
-      closeCloudModal();
-      setSessionUnlocked(false);
-      showLockScreen();
-    }
-
-    /**
-     * 重設密碼／登出鎖定（避免被鎖死）
-     */
-    function showResetPinConfirm() {
-      document.getElementById('reset-pin-trigger').classList.add('hidden');
-      document.getElementById('reset-pin-confirm-box').classList.remove('hidden');
-    }
-
-    function hideResetPinConfirm() {
-      const trigger = document.getElementById('reset-pin-trigger');
-      const box = document.getElementById('reset-pin-confirm-box');
-      if (trigger) trigger.classList.remove('hidden');
-      if (box) box.classList.add('hidden');
-    }
-
-    function resetPinAndUnlock() {
-      localStorage.removeItem(STORAGE_KEY_TOKEN);
-      setSessionUnlocked(true);
-      hideLockScreen();
-      updateLockUI();
-      setSyncStatus(getApiUrl() ? 'synced' : 'unconfigured', getApiUrl() ? '已清除密碼鎖（尚未夾帶 Token）' : '本機模式（密碼鎖已重設）');
-      showToast('已重設密碼並解除鎖定');
-    }
-
-    function clearSavedPinAndUnlock() {
-      localStorage.removeItem(STORAGE_KEY_TOKEN);
-      setSessionUnlocked(true);
-      document.getElementById('cloud-token-input').value = '';
-      updateLockUI();
-      showToast('已清除本機通行密碼');
-    }
-
-    function togglePasswordVisibility(inputId, iconId) {
-      const input = document.getElementById(inputId);
-      const icon = document.getElementById(iconId);
-      if (!input || !icon) return;
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'ph ph-eye-slash text-base';
-      } else {
-        input.type = 'password';
-        icon.className = 'ph ph-eye text-base';
-      }
     }
 
     /**
@@ -1554,45 +1420,39 @@ function doPost(e) {
     }
 
     /**
-     * 渲染香水瓶身圖片區塊
+     * 渲染香水瓶身圖片或質感插圖預留框
      */
     function renderBottleVisual(item, sizeClass = 'w-14 h-16') {
-      const imgUrl = (item.image_url || '').trim();
-      const fallbackSvg = getBottlePlaceholderSvg(item.brand, item.bottleColor || '#4A5D4E');
-      if (imgUrl !== '') {
+      const color = item.bottleColor || '#4A5D4E';
+      const svgFallback = getBottlePlaceholderSvg(item.brand, color);
+      if (item.image_url && String(item.image_url).trim()) {
         return `
-          <div class="${sizeClass} rounded-xl bg-cream border border-sand overflow-hidden shrink-0 relative flex items-center justify-center">
-            <img src="${escapeHtml(imgUrl)}"
-                 alt="${escapeHtml(item.name)}"
-                 class="w-full h-full object-cover transition-opacity duration-300"
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-            <div class="hidden w-full h-full items-center justify-center p-0.5">
-              ${fallbackSvg}
-            </div>
+          <div class="${sizeClass} rounded-2xl bg-cream border border-sand/80 overflow-hidden shrink-0 relative flex items-center justify-center">
+            <img src="${escapeAttr(item.image_url)}" alt="${escapeAttr(item.name)}"
+              class="w-full h-full object-cover"
+              onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');" />
+            <div class="hidden w-full h-full">${svgFallback}</div>
           </div>
         `;
       }
       return `
-        <div class="${sizeClass} rounded-xl bg-cream border border-sand overflow-hidden shrink-0 flex items-center justify-center p-0.5">
-          ${fallbackSvg}
+        <div class="${sizeClass} rounded-2xl bg-cream border border-sand/80 overflow-hidden shrink-0 flex items-center justify-center">
+          ${svgFallback}
         </div>
       `;
     }
 
     /**
-     * 初始化應用程式
+     * 初始化應用程式（直接進入主畫面，無密碼上鎖流程）
      */
     function initApp() {
       document.getElementById('gas-code-box').value = GAS_TEMPLATE_CODE;
+      loadCategories();
       loadLocalData();
+      syncCategoriesFromItems();
+      renderSubFilterBar();
       updateCounts();
-      updateLockUI();
       renderList();
-
-      if (hasConfiguredToken() && !isSessionUnlocked()) {
-        showLockScreen();
-        return;
-      }
 
       const apiUrl = getApiUrl();
       if (apiUrl) {
@@ -1623,19 +1483,23 @@ function doPost(e) {
     }
 
     /**
-     * 儲存到本地並自動向 Google 試算表進行雙向寫入同步 (POST 夾帶 token)
+     * 儲存到本地並自動向 Google 試算表進行雙向寫入同步 (price 傳送純數字)
      */
     async function saveAndSyncCloud() {
       saveLocalOnly();
       const apiUrl = getApiUrl();
       if (!apiUrl) return;
 
-      const token = getAccessToken();
       setSyncStatus('syncing', '正在同步寫入 Google 試算表...');
+      const cleanItems = fragrances.map((item, idx) => ({
+        ...item,
+        price: parseNumericPrice(item.price) || '',
+        order_num: idx + 1
+      }));
+
       const payload = JSON.stringify({
         action: 'sync_all',
-        token: token,
-        items: fragrances
+        items: cleanItems
       });
 
       try {
@@ -1645,23 +1509,8 @@ function doPost(e) {
           body: payload
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
-
-        const textBody = await res.text();
-        try {
-          const jsonBody = JSON.parse(textBody);
-          if (jsonBody && (jsonBody.ok === false || jsonBody.error === 'Unauthorized')) {
-            setSyncStatus('error', '同步密碼驗證失敗（Unauthorized）');
-            setSessionUnlocked(false);
-            showLockScreen('雲端驗證密碼不符，請重新輸入正確密碼。');
-            return;
-          }
-        } catch (_) {
-          // 非 JSON 回應時若 HTTP 200 視為已送出
-        }
-
         setSyncStatus('synced', '已即時同步至 Google 試算表');
       } catch (err) {
-        // 若瀏覽器因跨網域限制阻擋讀取回應，自動 fallback 使用 no-cors 送出寫入請求
         try {
           await fetch(apiUrl, {
             method: 'POST',
@@ -1678,7 +1527,7 @@ function doPost(e) {
     }
 
     /**
-     * 從 Google 試算表讀取最新清單 (GET?token=...)
+     * 從 Google 試算表讀取最新清單 (無密碼版 GET)
      */
     async function syncFromCloud(isManual = false) {
       const apiUrl = getApiUrl();
@@ -1690,24 +1539,14 @@ function doPost(e) {
         return;
       }
 
-      const token = getAccessToken();
       const separator = apiUrl.includes('?') ? '&' : '?';
-      const requestUrl = token
-        ? `${apiUrl}${separator}token=${encodeURIComponent(token)}&_t=${Date.now()}`
-        : `${apiUrl}${separator}_t=${Date.now()}`;
+      const requestUrl = `${apiUrl}${separator}_t=${Date.now()}`;
 
       setSyncStatus('syncing', '正在從 Google 試算表讀取...');
       try {
         const res = await fetch(requestUrl, { method: 'GET', cache: 'no-store' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
-
-        if (data && (data.ok === false || data.error === 'Unauthorized')) {
-          setSyncStatus('error', '密碼驗證失敗，請重新輸入密碼');
-          setSessionUnlocked(false);
-          showLockScreen('Google 試算表拒絕存取：通行密碼不符，請重新輸入。');
-          return;
-        }
 
         const remoteItems = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : null);
         if (!remoteItems) throw new Error('回傳格式不符');
@@ -1726,7 +1565,7 @@ function doPost(e) {
       } catch (err) {
         console.error('從試算表讀取失敗:', err);
         setSyncStatus('error', '雲端讀取失敗，顯示本機快取');
-        if (isManual) showToast('讀取失敗，請確認網址、密碼與部署權限');
+        if (isManual) showToast('讀取失敗，請確認網址與部署權限');
       }
     }
 
@@ -1735,10 +1574,6 @@ function doPost(e) {
      */
     function openCloudModal() {
       document.getElementById('cloud-url-input').value = getApiUrl();
-      document.getElementById('cloud-token-input').value = getAccessToken();
-      document.getElementById('cloud-token-input').type = 'password';
-      document.getElementById('toggle-token-eye').className = 'ph ph-eye text-base';
-      updateLockUI();
       cancelResetConfirm();
       document.getElementById('cloud-modal').classList.remove('hidden');
     }
@@ -1749,22 +1584,11 @@ function doPost(e) {
 
     function saveCloudUrlAndPull() {
       const val = document.getElementById('cloud-url-input').value.trim();
-      const tokenVal = document.getElementById('cloud-token-input').value.trim();
-
-      if (tokenVal) {
-        localStorage.setItem(STORAGE_KEY_TOKEN, tokenVal);
-        setSessionUnlocked(true);
-      } else {
-        localStorage.removeItem(STORAGE_KEY_TOKEN);
-        setSessionUnlocked(true);
-      }
-      updateLockUI();
-
       if (!val) {
         localStorage.removeItem(STORAGE_KEY_API);
         setSyncStatus('unconfigured');
         closeCloudModal();
-        showToast(tokenVal ? '已儲存通行密碼（本機模式）' : '已清除雲端網址，切換回本機模式');
+        showToast('已清除雲端網址，切換回本機模式');
         return;
       }
       localStorage.setItem(STORAGE_KEY_API, val);
@@ -1774,18 +1598,7 @@ function doPost(e) {
 
     async function pushAllToCloud(fromModal = false) {
       const inputEl = document.getElementById('cloud-url-input');
-      const tokenEl = document.getElementById('cloud-token-input');
       const val = (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : getApiUrl();
-      const tokenVal = tokenEl ? tokenEl.value.trim() : getAccessToken();
-
-      if (tokenVal) {
-        localStorage.setItem(STORAGE_KEY_TOKEN, tokenVal);
-        setSessionUnlocked(true);
-      } else {
-        localStorage.removeItem(STORAGE_KEY_TOKEN);
-        setSessionUnlocked(true);
-      }
-      updateLockUI();
 
       if (!val) {
         showToast('請先貼上 Google Apps Script 網址');
@@ -1810,6 +1623,27 @@ function doPost(e) {
     }
 
     /**
+     * 動態渲染「已持有」子分類篩選膠囊列
+     */
+    function renderSubFilterBar() {
+      const bar = document.getElementById('subfilter-bar');
+      if (!bar) return;
+
+      if (currentSubFilter !== '全部' && !categories.includes(currentSubFilter)) {
+        currentSubFilter = '全部';
+      }
+
+      const allFilters = ['全部', ...categories];
+      bar.innerHTML = allFilters.map(sub => {
+        const isActive = currentSubFilter === sub;
+        const btnClass = isActive
+          ? 'sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-charcoal text-white transition-all'
+          : 'sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-paper border border-sand text-muted hover:text-charcoal transition-all';
+        return `<button onclick="setSubFilter('${escapeAttr(sub)}')" data-sub="${escapeAttr(sub)}" class="${btnClass}">${escapeHtml(sub)} (0)</button>`;
+      }).join('');
+    }
+
+    /**
      * 更新分頁與子分類數量徽章
      */
     function updateCounts() {
@@ -1821,16 +1655,12 @@ function doPost(e) {
       document.getElementById('count-try').textContent = tryItems.length;
       document.getElementById('count-buy').textContent = buyItems.length;
 
-      const subCounts = {
-        '全部': ownedItems.length,
-        '個人香水': ownedItems.filter(i => i.sub_category === '個人香水').length,
-        '空間噴霧': ownedItems.filter(i => i.sub_category === '空間噴霧').length,
-        '試管禮盒': ownedItems.filter(i => i.sub_category === '試管禮盒').length
-      };
-
       document.querySelectorAll('.sub-btn').forEach(btn => {
         const sub = btn.getAttribute('data-sub');
-        btn.textContent = `${sub} (${subCounts[sub] ?? 0})`;
+        const count = sub === '全部'
+          ? ownedItems.length
+          : ownedItems.filter(i => i.sub_category === sub).length;
+        btn.textContent = `${sub} (${count})`;
       });
     }
 
@@ -1866,14 +1696,154 @@ function doPost(e) {
      */
     function setSubFilter(sub) {
       currentSubFilter = sub;
-      document.querySelectorAll('.sub-btn').forEach(btn => {
-        if (btn.getAttribute('data-sub') === sub) {
-          btn.className = 'sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-charcoal text-white transition-all';
-        } else {
-          btn.className = 'sub-btn shrink-0 px-3 py-1 rounded-full text-xs font-medium bg-paper border border-sand text-muted hover:text-charcoal transition-all';
+      renderSubFilterBar();
+      updateCounts();
+      renderList();
+    }
+
+    /**
+     * 分類標籤管理抽屜控制 (新增 / 重新命名 / 刪除分類標籤)
+     */
+    function openCategoryModal() {
+      document.getElementById('new-category-input').value = '';
+      renderCategoryManageList();
+      document.getElementById('category-modal').classList.remove('hidden');
+    }
+
+    function closeCategoryModal() {
+      document.getElementById('category-modal').classList.add('hidden');
+      // 若正在開啟新增或編輯抽屜，同步刷新下拉選單
+      populateCategorySelect('add-sub', document.getElementById('add-sub')?.value);
+      if (activeDetailId && isEditMode) {
+        const currentEditVal = document.getElementById('edit-sub')?.value;
+        populateCategorySelect('edit-sub', currentEditVal);
+      }
+    }
+
+    function populateCategorySelect(selectId, selectedVal) {
+      const sel = document.getElementById(selectId);
+      if (!sel) return;
+      const listToUse = [...categories];
+      if (selectedVal && !listToUse.includes(selectedVal)) {
+        listToUse.push(selectedVal);
+      }
+      sel.innerHTML = listToUse.map(cat =>
+        `<option value="${escapeAttr(cat)}" ${cat === selectedVal ? 'selected' : ''}>${escapeHtml(cat)}</option>`
+      ).join('');
+    }
+
+    function renderCategoryManageList() {
+      const container = document.getElementById('category-manage-list');
+      if (!container) return;
+
+      container.innerHTML = categories.map((cat, idx) => {
+        const usageCount = fragrances.filter(item => item.sub_category === cat).length;
+        return `
+          <div class="bg-cream border border-sand rounded-2xl p-3 flex items-center gap-2">
+            <input type="text" id="cat-edit-input-${idx}" value="${escapeAttr(cat)}"
+              class="flex-1 min-w-0 bg-paper border border-sand rounded-xl px-3 py-2 text-xs font-medium text-charcoal focus:outline-none focus:border-sage" />
+            <span class="text-[11px] text-muted shrink-0">${usageCount} 項</span>
+            <button type="button" onclick="renameCategory(${idx})"
+              class="px-2.5 py-2 rounded-xl bg-sagePale text-sage text-xs font-semibold hover:bg-sage hover:text-white transition-colors shrink-0">
+              儲存
+            </button>
+            <button type="button" onclick="deleteCategory(${idx})"
+              class="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors shrink-0"
+              title="移除此分類標籤">
+              <i class="ph ph-trash text-sm"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleAddCategory(e) {
+      e.preventDefault();
+      const input = document.getElementById('new-category-input');
+      const val = input.value.trim();
+      if (!val) return;
+      if (categories.includes(val)) {
+        showToast('已存在相同的分類標籤');
+        return;
+      }
+      categories.push(val);
+      saveCategories();
+      renderSubFilterBar();
+      updateCounts();
+      renderCategoryManageList();
+      input.value = '';
+      showToast(`已新增分類「${val}」`);
+    }
+
+    function renameCategory(idx) {
+      const oldName = categories[idx];
+      const input = document.getElementById(`cat-edit-input-${idx}`);
+      const newName = input ? input.value.trim() : '';
+      if (!newName || newName === oldName) return;
+      if (categories.includes(newName)) {
+        showToast('已有同名的分類標籤');
+        return;
+      }
+
+      categories[idx] = newName;
+      saveCategories();
+
+      let updatedAny = false;
+      fragrances.forEach(item => {
+        if (item.sub_category === oldName) {
+          item.sub_category = newName;
+          updatedAny = true;
         }
       });
+
+      if (currentSubFilter === oldName) {
+        currentSubFilter = newName;
+      }
+
+      if (updatedAny) {
+        saveAndSyncCloud();
+      } else {
+        renderSubFilterBar();
+        updateCounts();
+      }
+
+      renderCategoryManageList();
       renderList();
+      showToast(`已將「${oldName}」更名為「${newName}」`);
+    }
+
+    function deleteCategory(idx) {
+      if (categories.length <= 1) {
+        showToast('至少需保留一個分類標籤');
+        return;
+      }
+      const targetName = categories[idx];
+      const fallbackCat = categories.find((_, i) => i !== idx) || '個人香水';
+      categories.splice(idx, 1);
+      saveCategories();
+
+      let updatedAny = false;
+      fragrances.forEach(item => {
+        if (item.sub_category === targetName) {
+          item.sub_category = fallbackCat;
+          updatedAny = true;
+        }
+      });
+
+      if (currentSubFilter === targetName) {
+        currentSubFilter = '全部';
+      }
+
+      if (updatedAny) {
+        saveAndSyncCloud();
+      } else {
+        renderSubFilterBar();
+        updateCounts();
+      }
+
+      renderCategoryManageList();
+      renderList();
+      showToast(`已移除「${targetName}」並移轉至「${fallbackCat}」`);
     }
 
     /**
@@ -1957,6 +1927,9 @@ function doPost(e) {
       }
 
       container.innerHTML = items.map((item, idx) => {
+        const formattedPrice = formatPriceDisplay(item.price);
+        const unitPriceText = formatUnitPriceDisplay(item.price, item.volume);
+
         let badgeHtml = '';
         if (item.list === 'owned' && item.sub_category) {
           const badgeStyle = item.sub_category === '個人香水'
@@ -1965,10 +1938,16 @@ function doPost(e) {
               ? 'bg-woodPale text-wood'
               : 'bg-sand text-charcoal';
           badgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-medium shrink-0 ${badgeStyle}">${escapeHtml(item.sub_category)}</span>`;
-        } else if (item.price) {
-          const shortPrice = item.price.split('（')[0].trim();
-          badgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-medium bg-woodPale text-wood max-w-[115px] truncate shrink-0">${escapeHtml(shortPrice)}</span>`;
+        } else if (formattedPrice) {
+          badgeHtml = `<span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-woodPale text-wood shrink-0">${escapeHtml(formattedPrice)}</span>`;
         }
+
+        const priceAndUnitRow = (formattedPrice || unitPriceText)
+          ? `<div class="flex flex-wrap items-center gap-1.5 mt-1">
+               ${formattedPrice ? `<span class="text-[11px] font-semibold text-charcoal">${escapeHtml(formattedPrice)}</span>` : ''}
+               ${unitPriceText ? `<span class="px-1.5 py-0.5 rounded bg-sagePale text-sage text-[10px] font-semibold">${escapeHtml(unitPriceText)}</span>` : ''}
+             </div>`
+          : '';
 
         const volumeTag = item.volume
           ? `<span class="text-[11px] text-muted font-normal ml-1">(${escapeHtml(item.volume)})</span>`
@@ -2030,6 +2009,7 @@ function doPost(e) {
               <h3 class="text-[14px] font-semibold text-charcoal leading-snug line-clamp-2">
                 ${escapeHtml(item.name)}${volumeTag}
               </h3>
+              ${priceAndUnitRow}
               ${notesPreview}
             </div>
             ${rightActionHtml}
@@ -2269,6 +2249,8 @@ function doPost(e) {
         ].filter(l => l.key !== item.list);
 
         const heroVisual = renderBottleVisual(item, 'w-28 h-32 shadow-sm');
+        const formattedPrice = formatPriceDisplay(item.price);
+        const unitPriceText = formatUnitPriceDisplay(item.price, item.volume);
 
         contentEl.innerHTML = `
           <!-- 頂部品牌名稱與官方瓶身照片 -->
@@ -2293,13 +2275,16 @@ function doPost(e) {
               </p>
             </div>
 
-            ${item.price ? `
+            ${(formattedPrice || unitPriceText) ? `
               <div class="bg-cream rounded-2xl p-3.5 border border-sand">
-                <div class="flex items-center gap-1.5 text-xs font-semibold text-wood mb-1">
+                <div class="flex items-center gap-1.5 text-xs font-semibold text-wood mb-1.5">
                   <i class="ph-fill ph-tag"></i>
-                  <span>參考價格 / 單位成本</span>
+                  <span>參考價格與每 ml 單價</span>
                 </div>
-                <p class="text-sm text-charcoal font-medium">${escapeHtml(item.price)}</p>
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-sm text-charcoal font-bold">${formattedPrice ? escapeHtml(formattedPrice) : '未填寫總價'}</p>
+                  ${unitPriceText ? `<span class="px-2.5 py-1 rounded-full bg-sagePale text-sage text-xs font-semibold">${escapeHtml(unitPriceText)}</span>` : ''}
+                </div>
               </div>
             ` : ''}
 
@@ -2339,6 +2324,14 @@ function doPost(e) {
         `;
       } else {
         // ========== 編輯模式 ==========
+        const catOptionsList = [...categories];
+        if (item.sub_category && !catOptionsList.includes(item.sub_category)) {
+          catOptionsList.push(item.sub_category);
+        }
+        const numericPriceVal = parseNumericPrice(item.price);
+        const initFormatted = formatPriceDisplay(numericPriceVal) || '—';
+        const initUnit = formatUnitPriceDisplay(numericPriceVal, item.volume) || '—';
+
         contentEl.innerHTML = `
           <form onsubmit="saveEditedItem(event)" class="space-y-3.5 pb-6">
             <div class="grid grid-cols-2 gap-3">
@@ -2351,11 +2344,12 @@ function doPost(e) {
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-medium text-muted mb-1">分類標籤</label>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-xs font-medium text-muted">分類標籤</label>
+                  <button type="button" onclick="openCategoryModal()" class="text-[11px] font-semibold text-sage hover:underline">＋ 編輯標籤</button>
+                </div>
                 <select id="edit-sub" class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage">
-                  <option value="個人香水" ${item.sub_category === '個人香水' ? 'selected' : ''}>個人香水</option>
-                  <option value="空間噴霧" ${item.sub_category === '空間噴霧' ? 'selected' : ''}>空間噴霧</option>
-                  <option value="試管禮盒" ${item.sub_category === '試管禮盒' ? 'selected' : ''}>試管禮盒</option>
+                  ${catOptionsList.map(cat => `<option value="${escapeAttr(cat)}" ${item.sub_category === cat ? 'selected' : ''}>${escapeHtml(cat)}</option>`).join('')}
                 </select>
               </div>
             </div>
@@ -2367,8 +2361,8 @@ function doPost(e) {
                   class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage" />
               </div>
               <div>
-                <label class="block text-xs font-medium text-muted mb-1">容量規格</label>
-                <input type="text" id="edit-volume" value="${escapeHtml(item.volume || '')}" placeholder="50ml"
+                <label class="block text-xs font-medium text-muted mb-1">容量 (ml)</label>
+                <input type="text" id="edit-volume" oninput="updateEditUnitPricePreview()" value="${escapeHtml(item.volume || '')}" placeholder="50ml"
                   class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage" />
               </div>
             </div>
@@ -2400,9 +2394,13 @@ function doPost(e) {
             </div>
 
             <div>
-              <label class="block text-xs font-medium text-muted mb-1">參考價格 / 單價</label>
-              <input type="text" id="edit-price" value="${escapeHtml(item.price || '')}" placeholder="例如：NT$ 3,680（約 36.8 元/ml）"
+              <label class="block text-xs font-medium text-muted mb-1">價格（僅填純數字，例如：3680）</label>
+              <input type="number" id="edit-price" min="0" step="1" oninput="updateEditUnitPricePreview()" value="${numericPriceVal > 0 ? numericPriceVal : ''}" placeholder="例如：3680"
                 class="w-full bg-cream border border-sand rounded-xl px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-sage" />
+              <div class="mt-1.5 px-3 py-1.5 rounded-xl bg-sagePale/80 text-sage text-xs font-medium flex items-center justify-between">
+                <span>顯示價格：<b id="edit-price-formatted">${escapeHtml(initFormatted)}</b></span>
+                <span>每 ml 單價：<b id="edit-unit-formatted">${escapeHtml(initUnit)}</b></span>
+              </div>
             </div>
 
             <div>
@@ -2420,6 +2418,15 @@ function doPost(e) {
           </form>
         `;
       }
+    }
+
+    function updateEditUnitPricePreview() {
+      const p = document.getElementById('edit-price')?.value || '';
+      const v = document.getElementById('edit-volume')?.value || '';
+      const pEl = document.getElementById('edit-price-formatted');
+      const uEl = document.getElementById('edit-unit-formatted');
+      if (pEl) pEl.textContent = formatPriceDisplay(p) || '—';
+      if (uEl) uEl.textContent = formatUnitPriceDisplay(p, v) || '—';
     }
 
     function previewEditImage(url) {
@@ -2450,7 +2457,7 @@ function doPost(e) {
         name: document.getElementById('edit-name').value.trim(),
         image_url: document.getElementById('edit-image').value.trim(),
         notes: document.getElementById('edit-notes').value.trim(),
-        price: document.getElementById('edit-price').value.trim(),
+        price: parseNumericPrice(document.getElementById('edit-price').value),
         memo: document.getElementById('edit-memo').value.trim()
       };
 
@@ -2523,8 +2530,10 @@ function doPost(e) {
     function openAddModal() {
       const form = document.getElementById('add-form');
       form.reset();
+      populateCategorySelect('add-sub', categories[0] || '個人香水');
       document.getElementById('add-list').value = currentTab;
       toggleAddSubCategory();
+      updateAddUnitPricePreview();
 
       const modal = document.getElementById('add-modal');
       const backdrop = document.getElementById('add-backdrop');
@@ -2535,6 +2544,19 @@ function doPost(e) {
         backdrop.classList.remove('opacity-0');
         panel.classList.remove('translate-y-full');
       });
+    }
+
+    function updateAddUnitPricePreview() {
+      const listVal = document.getElementById('add-list')?.value || 'owned';
+      const vol = listVal === 'owned'
+        ? (document.getElementById('add-volume-owned')?.value || '')
+        : (document.getElementById('add-volume')?.value || '');
+      const price = document.getElementById('add-price')?.value || '';
+
+      const pEl = document.getElementById('add-price-formatted');
+      const uEl = document.getElementById('add-unit-formatted');
+      if (pEl) pEl.textContent = formatPriceDisplay(price) || '—';
+      if (uEl) uEl.textContent = formatUnitPriceDisplay(price, vol) || '—';
     }
 
     function closeAddModal() {
@@ -2563,12 +2585,13 @@ function doPost(e) {
         volWrapper.classList.remove('hidden');
         volRowOwned.classList.add('hidden');
       }
+      updateAddUnitPricePreview();
     }
 
     function handleAddSubmit(e) {
       e.preventDefault();
       const targetList = document.getElementById('add-list').value;
-      const subCategory = targetList === 'owned' ? document.getElementById('add-sub').value : '個人香水';
+      const subCategory = targetList === 'owned' ? document.getElementById('add-sub').value : (categories[0] || '個人香水');
       const volume = targetList === 'owned'
         ? document.getElementById('add-volume-owned').value.trim()
         : document.getElementById('add-volume').value.trim();
@@ -2583,7 +2606,7 @@ function doPost(e) {
         bottleColor: '#4A5D4E',
         image_url: document.getElementById('add-image').value.trim(),
         notes: document.getElementById('add-notes').value.trim(),
-        price: document.getElementById('add-price').value.trim(),
+        price: parseNumericPrice(document.getElementById('add-price').value),
         memo: document.getElementById('add-memo').value.trim(),
         order_num: 1
       };
@@ -2642,13 +2665,17 @@ function doPost(e) {
      * HTML 字串跳脫
      */
     function escapeHtml(str) {
-      if (!str) return '';
+      if (str === null || str === undefined) return '';
       return String(str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str);
     }
 
     window.addEventListener('DOMContentLoaded', initApp);
