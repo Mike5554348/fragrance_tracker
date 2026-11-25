@@ -106,28 +106,29 @@
         </div>
 
         <div class="flex items-center gap-1.5 shrink-0">
-          <!-- 排序/管理切換按鈕 -->
+          <!-- 排序/管理切換按鈕 (純圖示) -->
           <button id="toggle-sort-btn" onclick="toggleSortMode()"
-            class="px-2.5 py-2 rounded-xl text-xs font-medium flex items-center gap-1 transition-all border border-sand bg-paper text-charcoal active:scale-95"
-            title="切換順序調整與快速刪除模式">
-            <i class="ph ph-arrows-down-up text-sm text-sage"></i>
-            <span id="sort-btn-text">排序/管理</span>
+            class="p-2 rounded-xl flex items-center justify-center transition-all border border-sand bg-paper text-charcoal active:scale-95"
+            title="切換順序調整與快速刪除模式"
+            aria-label="排序/管理">
+            <i class="ph ph-arrows-down-up text-lg text-sage"></i>
           </button>
 
           <!-- 雲端設定按鈕 -->
           <button onclick="openCloudModal()"
             class="p-2 rounded-xl text-charcoal bg-paper border border-sand active:scale-95 transition-all relative"
-            title="Google 試算表雲端同步設定">
+            title="Google 試算表雲端同步設定"
+            aria-label="雲端同步設定">
             <i class="ph ph-cloud-arrow-up text-lg text-sage"></i>
             <span id="cloud-dot" class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-400"></span>
           </button>
 
-          <!-- 分類標籤管理按鈕 -->
+          <!-- 分類標籤管理按鈕 (純圖示) -->
           <button onclick="openCategoryModal()"
-            class="px-2.5 py-2 rounded-xl text-xs font-medium flex items-center gap-1 transition-all border border-sand bg-paper text-charcoal active:scale-95"
-            title="新增或編輯分類標籤">
-            <i class="ph ph-tag text-sm text-wood"></i>
-            <span>分類</span>
+            class="p-2 rounded-xl flex items-center justify-center transition-all border border-sand bg-paper text-charcoal active:scale-95"
+            title="新增或編輯分類標籤"
+            aria-label="分類標籤管理">
+            <i class="ph ph-tag text-lg text-wood"></i>
           </button>
 
           <!-- 新增香氛 (+) 按鈕 -->
@@ -1906,18 +1907,15 @@ const DEFAULT_FRAGRANCES = [
     function toggleSortMode() {
       isSortMode = !isSortMode;
       const btn = document.getElementById('toggle-sort-btn');
-      const btnText = document.getElementById('sort-btn-text');
       const banner = document.getElementById('sort-banner');
 
       if (isSortMode) {
-        btn.className = 'px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all border border-sage bg-sage text-white active:scale-95';
-        btn.querySelector('i').className = 'ph-bold ph-check text-sm text-white';
-        btnText.textContent = '完成';
+        btn.className = 'p-2 rounded-xl flex items-center justify-center transition-all border border-sage bg-sage text-white active:scale-95';
+        btn.querySelector('i').className = 'ph-bold ph-check text-lg text-white';
         banner.classList.remove('hidden');
       } else {
-        btn.className = 'px-2.5 py-2 rounded-xl text-xs font-medium flex items-center gap-1 transition-all border border-sand bg-paper text-charcoal active:scale-95';
-        btn.querySelector('i').className = 'ph ph-arrows-down-up text-sm text-sage';
-        btnText.textContent = '排序/管理';
+        btn.className = 'p-2 rounded-xl flex items-center justify-center transition-all border border-sand bg-paper text-charcoal active:scale-95';
+        btn.querySelector('i').className = 'ph ph-arrows-down-up text-lg text-sage';
         banner.classList.add('hidden');
       }
       renderList();
